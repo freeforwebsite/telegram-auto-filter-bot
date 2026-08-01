@@ -165,6 +165,25 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception as e2:
                 await context.bot.send_message(chat_id=query.message.chat_id, text=f"❌ Error sending file.")
 
+async def channel_index_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.type != 'channel':
+        return
+        
+    msg = update.channel_post
+    if not msg:
+        return
+        
+    if not msg.document and not msg.video:
+        return
+        
+    file = msg.document or msg.video
+    file_id = file.file_id
+    file_name = file.file_name or "Unknown_Movie"
+    caption = msg.caption_html if msg.caption else ""
+    
+    # Automatically add to database
+    add_movie(file_id, file_name, caption, msg.chat.id, msg.message_id)
+
 # --- Dummy Web Server for Render ---
 class DummyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -184,8 +203,11 @@ def main():
     
     application.add_handler(CommandHandler('start', start_handler))
     
-    # In private, listen for media to index
+    # In private, listen for media to index manually
     application.add_handler(MessageHandler(filters.ChatType.PRIVATE & (filters.Document.ALL | filters.VIDEO), index_movie_handler))
+    
+    # In channels, listen for NEW media to index automatically
+    application.add_handler(MessageHandler(filters.ChatType.CHANNEL & (filters.Document.ALL | filters.VIDEO), channel_index_handler))
     
     # In groups, listen for text to search
     application.add_handler(MessageHandler(filters.ChatType.GROUPS & filters.TEXT & ~filters.COMMAND, group_search_handler))
