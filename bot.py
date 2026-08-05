@@ -334,6 +334,17 @@ async def batch_forward_handler(update: Update, context: ContextTypes.DEFAULT_TY
             
     await status_msg.edit_text(f"✅ **Batch Indexing Complete!**\n\nSuccessfully added **{success_count}** new movies to the database.", parse_mode="Markdown")
 
+async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not movies_collection:
+        await update.message.reply_text("❌ **MongoDB is NOT connected.**", parse_mode="Markdown")
+        return
+        
+    try:
+        count = movies_collection.count_documents({})
+        await update.message.reply_text(f"✅ **MongoDB is Connected!**\n\nTotal movies in database: **{count}**", parse_mode="Markdown")
+    except Exception as e:
+        await update.message.reply_text(f"❌ **MongoDB Error:** {e}")
+
 # --- Dummy Web Server for Render ---
 class DummyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -353,6 +364,7 @@ def main():
     
     application.add_handler(CommandHandler('start', start_handler))
     application.add_handler(CommandHandler('batch', batch_command))
+    application.add_handler(CommandHandler('status', status_command))
     
     # Catch forwarded messages for batch indexer (must be BEFORE index_movie_handler to intercept correctly if needed)
     application.add_handler(MessageHandler(filters.ChatType.PRIVATE & filters.FORWARDED, batch_forward_handler))
