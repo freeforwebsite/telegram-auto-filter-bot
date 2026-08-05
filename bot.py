@@ -139,9 +139,9 @@ def build_paginated_keyboard(results, page, query):
     
     # Fake Filter Buttons (Aesthetic)
     keyboard.append([
-        InlineKeyboardButton("Quality", callback_data="ignore"),
-        InlineKeyboardButton("Language", callback_data="ignore"),
-        InlineKeyboardButton("Season", callback_data="ignore")
+        InlineKeyboardButton("Quality", callback_data="help_quality"),
+        InlineKeyboardButton("Language", callback_data="help_language"),
+        InlineKeyboardButton("Season", callback_data="help_season")
     ])
     keyboard.append([InlineKeyboardButton("⬆️ SELECT OPTION HERE ⬆️", callback_data="ignore")])
     
@@ -228,6 +228,16 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if data == "ignore":
         await query.answer()
+        return
+        
+    if data == "help_quality":
+        await query.answer("💡 To filter by quality, just type it in your search!\n\nExample: 'Stranger Things 1080p'", show_alert=True)
+        return
+    if data == "help_language":
+        await query.answer("💡 To filter by language, just type it in your search!\n\nExample: 'Avatar Tamil'", show_alert=True)
+        return
+    if data == "help_season":
+        await query.answer("💡 To filter by season, just type it in your search!\n\nExample: 'Loki S01'", show_alert=True)
         return
         
     if data.startswith("page_"):
