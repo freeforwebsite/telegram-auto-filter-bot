@@ -184,6 +184,76 @@ async def channel_index_handler(update: Update, context: ContextTypes.DEFAULT_TY
     # Automatically add to database
     add_movie(file_id, file_name, caption, msg.chat.id, msg.message_id)
 
+import asyncio
+
+batch_users = {}
+
+async def batch_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if update.effective_chat.type != 'private':
+        return
+    batch_users[user_id] = True
+    await update.message.reply_text(
+        "🏎️ **Batch Indexer Activated!**\n\n"
+        "Please go to your Database Channel and **forward the very LAST (newest) message** to me here.\n"
+        "(It can be any message, text or movie). I will use its ID to scan the entire channel backwards!",
+        parse_mode="Markdown"
+    )
+
+async def batch_forward_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if not batch_users.get(user_id, False):
+        return
+        
+    msg = update.message
+    forward_chat = None
+    forward_msg_id = None
+    
+    # Handle Telegram Bot API 7.0+ (MessageOrigin) and older API (forward_from_chat)
+    if hasattr(msg, 'forward_origin') and msg.forward_origin:
+        if getattr(msg.forward_origin, 'type', '') == 'channel':
+            forward_chat = msg.forward_origin.chat.id
+            forward_msg_id = msg.forward_origin.message_id
+    elif hasattr(msg, 'forward_from_chat') and msg.forward_from_chat:
+        if msg.forward_from_chat.type == 'channel':
+            forward_chat = msg.forward_from_chat.id
+            forward_msg_id = msg.forward_from_message_id
+            
+    if not forward_chat:
+        await msg.reply_text("⚠️ This message was not forwarded from a channel! Please forward a message from your channel.")
+        return
+        
+    batch_users[user_id] = False
+    
+    status_msg = await msg.reply_text(f"⏳ **Starting Batch Indexing...**\n\nScanning {forward_msg_id} messages from the channel. Please wait (your screen will flicker as I quickly forward and delete messages).", parse_mode="Markdown")
+    
+    success_count = 0
+    # Process from latest down to 1
+    for msg_id in range(forward_msg_id, 0, -1):
+        try:
+            fwd_msg = await context.bot.forward_message(
+                chat_id=update.effective_chat.id,
+                from_chat_id=forward_chat,
+                message_id=msg_id
+            )
+            
+            if fwd_msg.document or fwd_msg.video:
+                file = fwd_msg.document or fwd_msg.video
+                file_id = file.file_id
+                file_name = file.file_name or "Unknown_Movie"
+                caption = fwd_msg.caption_html if fwd_msg.caption else ""
+                
+                if add_movie(file_id, file_name, caption, forward_chat, msg_id):
+                    success_count += 1
+                    
+            await fwd_msg.delete()
+            await asyncio.sleep(0.3) # Safe rate limit
+        except Exception:
+            # Message might be deleted in the channel, just skip
+            pass
+            
+    await status_msg.edit_text(f"✅ **Batch Indexing Complete!**\n\nSuccessfully added **{success_count}** movies to the database.", parse_mode="Markdown")
+
 # --- Dummy Web Server for Render ---
 class DummyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -202,6 +272,10 @@ def main():
     application = Application.builder().token(TOKEN).build()
     
     application.add_handler(CommandHandler('start', start_handler))
+    application.add_handler(CommandHandler('batch', batch_command))
+    
+    # Catch forwarded messages for batch indexer (must be BEFORE index_movie_handler to intercept correctly if needed)
+    application.add_handler(MessageHandler(filters.ChatType.PRIVATE & filters.FORWARDED, batch_forward_handler))
     
     # In private, listen for media to index manually
     application.add_handler(MessageHandler(filters.ChatType.PRIVATE & (filters.Document.ALL | filters.VIDEO), index_movie_handler))
