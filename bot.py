@@ -20,26 +20,30 @@ def load_env():
 load_env()
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 
-# --- Database Layer (JSON) ---
-DB_FILE = 'movies.json'
+import pymongo
 
-def load_db():
+MONGODB_URI = os.environ.get("MONGODB_URI", "")
+client = None
+db = None
+movies_collection = None
+
+if MONGODB_URI:
     try:
-        with open(DB_FILE, 'r') as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return []
-
-def save_db(data):
-    with open(DB_FILE, 'w') as f:
-        json.dump(data, f, indent=4)
+        client = pymongo.MongoClient(MONGODB_URI)
+        db = client['telegram_bot']
+        movies_collection = db['movies']
+    except Exception as e:
+        print(f"MongoDB Connection Error: {e}")
 
 def add_movie(file_id, file_name, caption_html, from_chat_id, message_id):
-    db = load_db()
-    for item in db:
-        if item['file_id'] == file_id:
-            return False
-            
+    if not movies_collection:
+        print("WARNING: MongoDB not connected. Cannot add movie.")
+        return False
+        
+    # Check if file already exists
+    if movies_collection.find_one({'file_id': file_id}):
+        return False
+        
     movie = {
         'id': str(uuid.uuid4()),
         'file_id': file_id,
@@ -48,28 +52,34 @@ def add_movie(file_id, file_name, caption_html, from_chat_id, message_id):
         'source_chat_id': from_chat_id,
         'source_message_id': message_id
     }
-    db.append(movie)
-    save_db(db)
+    
+    movies_collection.insert_one(movie)
     return True
 
 def search_movies(query):
-    db = load_db()
+    if not movies_collection:
+        return []
+        
     results = []
     # Split query into words for better matching
     words = query.lower().split()
-    for item in db:
+    
+    # We do a basic find and filter in python for now to mimic the old behavior exactly
+    # (Since we aren't creating complex text indexes yet)
+    cursor = movies_collection.find()
+    
+    for item in cursor:
         name_lower = item['file_name'].lower()
         # If all words in query are in the filename
         if all(word in name_lower for word in words):
             results.append(item)
+            
     return results
 
 def get_movie_by_id(movie_id):
-    db = load_db()
-    for item in db:
-        if item['id'] == movie_id:
-            return item
-    return None
+    if not movies_collection:
+        return None
+    return movies_collection.find_one({'id': movie_id})
 
 # --- Telegram Handlers ---
 
