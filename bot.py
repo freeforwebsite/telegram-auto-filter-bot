@@ -193,12 +193,11 @@ async def group_search_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         not_found_text = (
             f"❌ **Movie Not Found!**\n\n"
             f"I couldn't find anything matching: `{query}`\n\n"
-            "💡 **Tips for searching:**\n"
+            "💡 **Search Tips:**\n"
             "• Check your spelling carefully!\n"
-            "• Search for the **Movie/Series Name Only**.\n"
-            "• ❌ Don't use Season/Episode numbers (e.g. search `Stranger Things`, not `Stranger Things S05E01`).\n"
-            "• ❌ Don't use years or qualities (e.g. search `Avatar`, not `Avatar 2022 1080p`).\n\n"
-            "🔍 *Still can't find it? Use the button below to search Google!*"
+            "• **Movie:** `Jawan` or `Jawan 2023`\n"
+            "• **Series:** `Loki S01` or `Loki S01E04`\n"
+            "• **Don't use:** `: ! ( ) , . /`"
         )
         google_url = f"https://www.google.com/search?q={urllib.parse.quote(query)}"
         keyboard = [[InlineKeyboardButton("🔍 DO GOOGLE", url=google_url)]]
