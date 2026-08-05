@@ -253,7 +253,8 @@ async def group_search_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         return
         
     query = update.message.text
-    if not query or len(query) < 3:
+    # Ignore messages that are too short, or too long (like Welcome Messages and Admin announcements)
+    if not query or len(query) < 3 or len(query) > 60:
         return
         
     results = search_movies(query)
