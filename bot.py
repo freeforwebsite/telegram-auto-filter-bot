@@ -237,18 +237,22 @@ async def group_search_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             reply_markup=reply_markup,
             parse_mode="Markdown"
         )
-        # Auto-delete the message after 60 seconds to prevent group spam
+        # Auto-delete BOTH the user's message and bot's message after 60s
+        asyncio.create_task(delete_after(update.message, 60))
         asyncio.create_task(delete_after(msg, 60))
         return
         
     short_query = query[:40]
     reply_markup = build_paginated_keyboard(results, 1, short_query)
     
-    await update.message.reply_text(
+    msg = await update.message.reply_text(
         f"🔍 **Found {len(results)} result(s) for:** `{query}`",
         reply_markup=reply_markup,
         parse_mode="Markdown"
     )
+    # Auto-delete BOTH the user's message and bot's message after 60s
+    asyncio.create_task(delete_after(update.message, 60))
+    asyncio.create_task(delete_after(msg, 60))
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
