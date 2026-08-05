@@ -318,14 +318,21 @@ async def batch_forward_handler(update: Update, context: ContextTypes.DEFAULT_TY
                 
                 if add_movie(file_id, file_name, caption, forward_chat, msg_id):
                     success_count += 1
+                else:
+                    if movies_collection is None:
+                        await msg.reply_text("🚨 **CRITICAL ERROR:** MongoDB is NOT connected!\nMake sure `MONGODB_URI` is exactly correct in Render Environment Variables.")
+                        return
                     
             await fwd_msg.delete()
             await asyncio.sleep(0.3) # Safe rate limit
-        except Exception:
+        except Exception as e:
+            if "Chat not found" in str(e) or "unauthorized" in str(e).lower():
+                await msg.reply_text("🚨 **ERROR:** I cannot read that channel! Make sure I am an **ADMIN** in the channel.")
+                return
             # Message might be deleted in the channel, just skip
             pass
             
-    await status_msg.edit_text(f"✅ **Batch Indexing Complete!**\n\nSuccessfully added **{success_count}** movies to the database.", parse_mode="Markdown")
+    await status_msg.edit_text(f"✅ **Batch Indexing Complete!**\n\nSuccessfully added **{success_count}** new movies to the database.", parse_mode="Markdown")
 
 # --- Dummy Web Server for Render ---
 class DummyHandler(BaseHTTPRequestHandler):
