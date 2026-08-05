@@ -148,6 +148,17 @@ async def index_movie_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     success = add_movie(file_id, file_name, caption, msg.chat.id, msg.message_id)
     if success:
         await msg.reply_text(f"✅ **Saved to Database!**\n\nName: `{file_name}`", parse_mode="Markdown")
+        
+        # 🌟 NEW: Forward a physical backup of the file to the Database Channel!
+        try:
+            await context.bot.copy_message(
+                chat_id=-1003975570574,
+                from_chat_id=msg.chat.id,
+                message_id=msg.message_id
+            )
+        except Exception as e:
+            print(f"Failed to backup to Database Channel: {e}")
+            
     else:
         await msg.reply_text("⚠️ This file is already in the database.")
 
