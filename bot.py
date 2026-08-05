@@ -36,7 +36,7 @@ if MONGODB_URI:
         print(f"MongoDB Connection Error: {e}")
 
 def add_movie(file_id, file_name, caption_html, from_chat_id, message_id):
-    if not movies_collection:
+    if movies_collection is None:
         print("WARNING: MongoDB not connected. Cannot add movie.")
         return False
         
@@ -57,7 +57,7 @@ def add_movie(file_id, file_name, caption_html, from_chat_id, message_id):
     return True
 
 def search_movies(query):
-    if not movies_collection:
+    if movies_collection is None:
         return []
         
     results = []
@@ -77,7 +77,7 @@ def search_movies(query):
     return results
 
 def get_movie_by_id(movie_id):
-    if not movies_collection:
+    if movies_collection is None:
         return None
     return movies_collection.find_one({'id': movie_id})
 
@@ -335,7 +335,7 @@ async def batch_forward_handler(update: Update, context: ContextTypes.DEFAULT_TY
     await status_msg.edit_text(f"✅ **Batch Indexing Complete!**\n\nSuccessfully added **{success_count}** new movies to the database.", parse_mode="Markdown")
 
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not movies_collection:
+    if movies_collection is None:
         await update.message.reply_text("❌ **MongoDB is NOT connected.**", parse_mode="Markdown")
         return
         
