@@ -159,6 +159,15 @@ def build_paginated_keyboard(results, page, query):
         
     return InlineKeyboardMarkup(keyboard)
 
+import urllib.parse
+
+async def delete_after(message, seconds):
+    await asyncio.sleep(seconds)
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
 async def group_search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Only listen in groups or supergroups
     if update.effective_chat.type in ['private', 'channel']:
@@ -170,6 +179,26 @@ async def group_search_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         
     results = search_movies(query)
     if not results:
+        not_found_text = (
+            f"**SORRY NO FILES WERE FOUND FOR YOUR REQUEST:** `{query}`\n\n"
+            "» **CHECK YOUR SPELLING IN GOOGLE AND TRY AGAIN**\n\n"
+            "» **MOVIE REQUEST FORMAT**\n"
+            "» EXAMPLE: Jawan or Jawan 2023\n\n"
+            "» **SERIES REQUEST FORMAT**\n"
+            "» EXAMPLE: Loki S01 or Loki S01E04\n\n"
+            "» DONT USE ➔ ':(!,./)"
+        )
+        google_url = f"https://www.google.com/search?q={urllib.parse.quote(query)}"
+        keyboard = [[InlineKeyboardButton("🔍 DO GOOGLE", url=google_url)]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        msg = await update.message.reply_text(
+            not_found_text, 
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
+        )
+        # Auto-delete the message after 60 seconds to prevent group spam
+        asyncio.create_task(delete_after(msg, 60))
         return
         
     short_query = query[:40]
