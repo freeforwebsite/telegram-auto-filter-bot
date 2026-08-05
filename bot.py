@@ -56,22 +56,33 @@ def add_movie(file_id, file_name, caption_html, from_chat_id, message_id):
     movies_collection.insert_one(movie)
     return True
 
+import re
+
+def normalize_text(text):
+    text = text.lower()
+    # Normalize season: s05, season 5, s5 -> s5
+    text = re.sub(r'\b(?:s|season\s*)0*(\d+)', r's\1', text)
+    # Normalize episode: e08, ep08, episode 8 -> ep8
+    text = re.sub(r'\b(?:e|ep|episode\s*)0*(\d+)', r'ep\1', text)
+    # Replace special characters with spaces
+    text = re.sub(r'[^a-z0-9\s]', ' ', text)
+    return text
+
 def search_movies(query):
     if movies_collection is None:
         return []
         
     results = []
-    # Split query into words for better matching
-    words = query.lower().split()
+    norm_query = normalize_text(query)
+    words = norm_query.split()
     
-    # We do a basic find and filter in python for now to mimic the old behavior exactly
-    # (Since we aren't creating complex text indexes yet)
+    # We do a basic find and filter in python for now
     cursor = movies_collection.find()
     
     for item in cursor:
-        name_lower = item['file_name'].lower()
-        # If all words in query are in the filename
-        if all(word in name_lower for word in words):
+        norm_name = normalize_text(item['file_name'])
+        # If all words in normalized query are in the normalized filename
+        if all(word in norm_name for word in words):
             results.append(item)
             
     return results
