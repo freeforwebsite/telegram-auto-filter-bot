@@ -506,6 +506,110 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"❌ **MongoDB Error:** {e}")
 
+WELCOME_TEXT = """🎬 **Welcome to CineVault!** 🎬
+
+This is an automated movie search group powered by **CineSearch**.
+
+🔍 **HOW TO SEARCH:**
+Just type the name of the movie or series you want to watch directly in this chat!
+
+✅ **Examples:**
+• `Avatar`
+• `Stranger Things`
+• `Loki S01`
+
+💡 **Tips for best results:**
+• Check your spelling carefully!
+• Do not use years or symbols.
+• You can easily filter by Quality, Language, or Season using the interactive buttons that appear after you search!
+
+⚠️ **Note:** To keep this group clean, all searches and results will auto-delete after 1 minute. When you find your movie, click its button and the bot will instantly send the full file directly to your **Private Messages!**
+
+🍿 *Happy Watching!*"""
+
+async def send_daily_welcome(context: ContextTypes.DEFAULT_TYPE):
+    if 'config' not in db.list_collection_names():
+        return
+    config_collection = db['config']
+    config = config_collection.find_one({'type': 'welcome_settings'})
+    
+    if not config or not config.get('chat_id'):
+        return
+        
+    chat_id = config['chat_id']
+    old_msg_id = config.get('welcome_msg_id')
+    
+    if old_msg_id:
+        try:
+            await context.bot.delete_message(chat_id=chat_id, message_id=old_msg_id)
+        except Exception:
+            pass
+            
+    try:
+        new_msg = await context.bot.send_message(
+            chat_id=chat_id,
+            text=WELCOME_TEXT,
+            parse_mode='Markdown'
+        )
+        try:
+            await context.bot.pin_chat_message(chat_id=chat_id, message_id=new_msg.message_id, disable_notification=True)
+        except Exception:
+            pass
+            
+        config_collection.update_one(
+            {'type': 'welcome_settings'},
+            {'$set': {'welcome_msg_id': new_msg.message_id}},
+            upsert=True
+        )
+    except Exception as e:
+        print(f"Failed to send daily welcome: {e}")
+
+async def setwelcome_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.type == 'private':
+        await update.message.reply_text("This command must be used in a Group!")
+        return
+        
+    member = await context.bot.get_chat_member(update.effective_chat.id, update.effective_user.id)
+    if member.status not in ['creator', 'administrator']:
+        await update.message.reply_text("Only admins can use this command!")
+        return
+        
+    if db is None:
+        await update.message.reply_text("MongoDB is not connected!")
+        return
+        
+    config_collection = db['config']
+    chat_id = update.effective_chat.id
+    
+    config = config_collection.find_one({'type': 'welcome_settings'})
+    if config and config.get('welcome_msg_id'):
+        try:
+            await context.bot.delete_message(chat_id=chat_id, message_id=config['welcome_msg_id'])
+        except Exception:
+            pass
+            
+    try:
+        new_msg = await update.message.reply_text(WELCOME_TEXT, parse_mode='Markdown')
+        try:
+            await context.bot.pin_chat_message(chat_id=chat_id, message_id=new_msg.message_id, disable_notification=True)
+        except Exception as e:
+            await update.message.reply_text(f"⚠️ I could not pin the message. Please make sure I have 'Pin Messages' permission!\nError: {e}")
+            
+        config_collection.update_one(
+            {'type': 'welcome_settings'},
+            {'$set': {'chat_id': chat_id, 'welcome_msg_id': new_msg.message_id}},
+            upsert=True
+        )
+        
+        # Delete the admin's /setwelcome command message
+        try:
+            await update.message.delete()
+        except Exception:
+            pass
+            
+    except Exception as e:
+        await update.message.reply_text(f"Error setting up welcome message: {e}")
+
 # --- Dummy Web Server for Render ---
 class DummyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -518,14 +622,23 @@ def run_dummy_server():
     server = HTTPServer(('0.0.0.0', port), DummyHandler)
     server.serve_forever()
 
+import datetime
+import pytz
+
 def main():
     threading.Thread(target=run_dummy_server, daemon=True).start()
     
     application = Application.builder().token(TOKEN).post_init(post_init).build()
     
+    # Schedule daily job at 4:00 AM IST
+    ist = pytz.timezone('Asia/Kolkata')
+    target_time = datetime.time(hour=4, minute=0, tzinfo=ist)
+    application.job_queue.run_daily(send_daily_welcome, time=target_time)
+    
     application.add_handler(CommandHandler('start', start_handler))
     application.add_handler(CommandHandler('batch', batch_command))
     application.add_handler(CommandHandler('status', status_command))
+    application.add_handler(CommandHandler('setwelcome', setwelcome_command))
     
     # Catch forwarded messages for batch indexer (must be BEFORE index_movie_handler to intercept correctly if needed)
     application.add_handler(MessageHandler(filters.ChatType.PRIVATE & filters.FORWARDED, batch_forward_handler))
