@@ -256,28 +256,27 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         movie_id = data[4:]
         movie = get_movie_by_id(movie_id)
         
-        if not movie:
-            await query.message.reply_text("❌ Movie not found in database anymore.")
-            return
-            
-        try:
-            # We use copy_message if possible because it's the safest way to preserve everything
-            await context.bot.copy_message(
-                chat_id=query.message.chat_id,
-                from_chat_id=movie['source_chat_id'],
-                message_id=movie['source_message_id']
-            )
-        except Exception as e:
-            # Fallback to file_id sending
+        if movie:
             try:
                 await context.bot.send_document(
-                    chat_id=query.message.chat_id,
+                    chat_id=update.effective_chat.id,
                     document=movie['file_id'],
-                    caption=movie['caption'],
-                    parse_mode="HTML"
+                    caption=movie.get('caption_html', ''),
+                    parse_mode='HTML'
                 )
-            except Exception as e2:
-                await context.bot.send_message(chat_id=query.message.chat_id, text=f"❌ Error sending file.")
+            except Exception as e:
+                try:
+                    await context.bot.send_video(
+                        chat_id=update.effective_chat.id,
+                        video=movie['file_id'],
+                        caption=movie.get('caption_html', ''),
+                        parse_mode='HTML'
+                    )
+                except Exception as ex:
+                    print(f"Error sending file: {ex}")
+                    await query.message.reply_text(f"🚨 **Error Sending File:**\n`{ex}`\n\nPlease tell your developer about this error!", parse_mode="Markdown")
+        else:
+            await query.message.reply_text("🚨 **Error:** This movie was not found in the database. It may have been deleted.")
 
 async def channel_index_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type != 'channel':
