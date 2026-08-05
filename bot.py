@@ -103,18 +103,17 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 movie = get_movie_by_id(movie_id)
                 if movie:
                     try:
-                        await context.bot.send_document(
+                        await context.bot.copy_message(
                             chat_id=update.effective_chat.id,
-                            document=movie['file_id'],
-                            caption=movie.get('caption_html', ''),
-                            parse_mode='HTML'
+                            from_chat_id=movie['source_chat_id'],
+                            message_id=movie['source_message_id']
                         )
                     except Exception as e:
                         try:
-                            await context.bot.send_video(
+                            await context.bot.send_document(
                                 chat_id=update.effective_chat.id,
-                                video=movie['file_id'],
-                                caption=movie.get('caption_html', ''),
+                                document=movie['file_id'],
+                                caption=movie.get('caption', ''),
                                 parse_mode='HTML'
                             )
                         except Exception as ex:
@@ -375,11 +374,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if movie:
             user_id = query.from_user.id
             try:
-                await context.bot.send_document(
+                await context.bot.copy_message(
                     chat_id=user_id,
-                    document=movie['file_id'],
-                    caption=movie.get('caption_html', ''),
-                    parse_mode='HTML'
+                    from_chat_id=movie['source_chat_id'],
+                    message_id=movie['source_message_id']
                 )
                 await query.answer("✅ File sent to your Private Messages!", show_alert=True)
             except Exception as e:
@@ -387,10 +385,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await query.answer("⚠️ Please go to my Private Messages and click START first, then try again!", show_alert=True)
                     return
                 try:
-                    await context.bot.send_video(
+                    await context.bot.send_document(
                         chat_id=user_id,
-                        video=movie['file_id'],
-                        caption=movie.get('caption_html', ''),
+                        document=movie['file_id'],
+                        caption=movie.get('caption', ''),
                         parse_mode='HTML'
                     )
                     await query.answer("✅ File sent to your Private Messages!", show_alert=True)
