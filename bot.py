@@ -92,10 +92,37 @@ def get_movie_by_id(movie_id):
         return None
     return movies_collection.find_one({'id': movie_id})
 
-# --- Telegram Handlers ---
-
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type == 'private':
+        # Check for deep link request: /start get_uuid
+        text = update.message.text
+        if len(text.split()) > 1:
+            arg = text.split()[1]
+            if arg.startswith("get_"):
+                movie_id = arg[4:]
+                movie = get_movie_by_id(movie_id)
+                if movie:
+                    try:
+                        await context.bot.send_document(
+                            chat_id=update.effective_chat.id,
+                            document=movie['file_id'],
+                            caption=movie.get('caption_html', ''),
+                            parse_mode='HTML'
+                        )
+                    except Exception as e:
+                        try:
+                            await context.bot.send_video(
+                                chat_id=update.effective_chat.id,
+                                video=movie['file_id'],
+                                caption=movie.get('caption_html', ''),
+                                parse_mode='HTML'
+                            )
+                        except Exception as ex:
+                            await update.message.reply_text(f"🚨 **Error Sending File:**\n`{ex}`", parse_mode="Markdown")
+                else:
+                    await update.message.reply_text("🚨 **Error:** This movie was not found in the database. It may have been deleted.")
+                return
+
         await update.message.reply_text(
             "🤖 **Auto Filter Bot is Online!**\n\n"
             "**How to use:**\n"
@@ -125,6 +152,13 @@ async def index_movie_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     else:
         await msg.reply_text("⚠️ This file is already in the database.")
 
+BOT_USERNAME = None
+
+async def post_init(application: Application):
+    global BOT_USERNAME
+    BOT_USERNAME = application.bot.username
+    print(f"Bot Username: {BOT_USERNAME}")
+
 def build_paginated_keyboard(results, page, query):
     ITEMS_PER_PAGE = 10
     total_results = len(results)
@@ -149,7 +183,13 @@ def build_paginated_keyboard(results, page, query):
         btn_text = movie['file_name']
         if len(btn_text) > 40:
             btn_text = btn_text[:37] + "..."
-        keyboard.append([InlineKeyboardButton(f"🎬 {btn_text}", callback_data=f"get_{movie['id']}")])
+        
+        # Use deep linking to redirect to bot PM
+        if BOT_USERNAME:
+            url = f"https://t.me/{BOT_USERNAME}?start=get_{movie['id']}"
+            keyboard.append([InlineKeyboardButton(f"🎬 {btn_text}", url=url)])
+        else:
+            keyboard.append([InlineKeyboardButton(f"🎬 {btn_text}", callback_data=f"get_{movie['id']}")])
         
     # Pagination Footer
     if total_pages > 1:
@@ -482,7 +522,7 @@ def run_dummy_server():
 def main():
     threading.Thread(target=run_dummy_server, daemon=True).start()
     
-    application = Application.builder().token(TOKEN).build()
+    application = Application.builder().token(TOKEN).post_init(post_init).build()
     
     application.add_handler(CommandHandler('start', start_handler))
     application.add_handler(CommandHandler('batch', batch_command))
