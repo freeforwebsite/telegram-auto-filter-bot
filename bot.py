@@ -139,9 +139,9 @@ def build_paginated_keyboard(results, page, query):
     
     # Fake Filter Buttons (Aesthetic)
     keyboard.append([
-        InlineKeyboardButton("Quality", callback_data="help_quality"),
-        InlineKeyboardButton("Language", callback_data="help_language"),
-        InlineKeyboardButton("Season", callback_data="help_season")
+        InlineKeyboardButton("Quality", callback_data=f"menu_quality_{query}"),
+        InlineKeyboardButton("Language", callback_data=f"menu_language_{query}"),
+        InlineKeyboardButton("Season", callback_data=f"menu_season_{query}")
     ])
     keyboard.append([InlineKeyboardButton("⬆️ SELECT OPTION HERE ⬆️", callback_data="ignore")])
     
@@ -168,6 +168,35 @@ def build_paginated_keyboard(results, page, query):
             
         keyboard.append(nav_row)
         
+    return InlineKeyboardMarkup(keyboard)
+
+def build_quality_menu(query):
+    qualities = ["360p", "480p", "720p", "1080p", "1440p", "2160p"]
+    keyboard = [[InlineKeyboardButton("⇊ SELECT QUALITY ⇊", callback_data="ignore")]]
+    for q in qualities:
+        keyboard.append([InlineKeyboardButton(q, callback_data=f"apply_{q}_{query}")])
+    keyboard.append([InlineKeyboardButton("🔙 BACK TO FILES 🔙", callback_data=f"page_1_{query}")])
+    return InlineKeyboardMarkup(keyboard)
+
+def build_language_menu(query):
+    languages = ["Tamil", "Malayalam", "English", "Hindi", "Telugu", "Kannada", "Gujarati", "Marathi", "Punjabi"]
+    keyboard = [[InlineKeyboardButton("⇊ SELECT LANGUAGE ⇊", callback_data="ignore")]]
+    for lang in languages:
+        keyboard.append([InlineKeyboardButton(lang, callback_data=f"apply_{lang}_{query}")])
+    keyboard.append([InlineKeyboardButton("🔙 BACK TO FILES 🔙", callback_data=f"page_1_{query}")])
+    return InlineKeyboardMarkup(keyboard)
+
+def build_season_menu(query):
+    keyboard = [[InlineKeyboardButton("⇊ SELECT SEASON ⇊", callback_data="ignore")]]
+    for i in range(1, 11, 2):
+        s1 = f"s0{i}" if i < 10 else f"s{i}"
+        s2 = f"s0{i+1}" if i+1 < 10 else f"s{i+1}"
+        row = [
+            InlineKeyboardButton(f"Season {i}", callback_data=f"apply_{s1}_{query}"),
+            InlineKeyboardButton(f"Season {i+1}", callback_data=f"apply_{s2}_{query}")
+        ]
+        keyboard.append(row)
+    keyboard.append([InlineKeyboardButton("🔙 BACK TO FILES 🔙", callback_data=f"page_1_{query}")])
     return InlineKeyboardMarkup(keyboard)
 
 import urllib.parse
@@ -230,14 +259,48 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
         return
         
-    if data == "help_quality":
-        await query.answer("💡 To filter by quality, just type it in your search!\n\nExample: 'Stranger Things 1080p'", show_alert=True)
+    if data.startswith("menu_"):
+        parts = data.split("_", 2)
+        menu_type = parts[1]
+        search_query = parts[2]
+        
+        if menu_type == "quality":
+            reply_markup = build_quality_menu(search_query)
+        elif menu_type == "language":
+            reply_markup = build_language_menu(search_query)
+        elif menu_type == "season":
+            reply_markup = build_season_menu(search_query)
+            
+        try:
+            await query.message.edit_reply_markup(reply_markup=reply_markup)
+        except Exception:
+            pass
+        await query.answer()
         return
-    if data == "help_language":
-        await query.answer("💡 To filter by language, just type it in your search!\n\nExample: 'Avatar Tamil'", show_alert=True)
-        return
-    if data == "help_season":
-        await query.answer("💡 To filter by season, just type it in your search!\n\nExample: 'Loki S01'", show_alert=True)
+        
+    if data.startswith("apply_"):
+        parts = data.split("_", 2)
+        filter_val = parts[1]
+        search_query = parts[2]
+        
+        # Stateless filtering by appending keyword
+        new_query = f"{search_query} {filter_val}"
+        
+        results = search_movies(new_query)
+        if not results:
+            await query.answer(f"❌ No movies found for {filter_val}!", show_alert=True)
+            return
+            
+        reply_markup = build_paginated_keyboard(results, 1, new_query)
+        try:
+            await query.message.edit_text(
+                f"🔍 **Found {len(results)} result(s) for:** `{new_query}`",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+        except Exception:
+            pass
+        await query.answer(f"Filtered by {filter_val}!")
         return
         
     if data.startswith("page_"):
