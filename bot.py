@@ -333,26 +333,32 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         movie = get_movie_by_id(movie_id)
         
         if movie:
+            user_id = query.from_user.id
             try:
                 await context.bot.send_document(
-                    chat_id=update.effective_chat.id,
+                    chat_id=user_id,
                     document=movie['file_id'],
                     caption=movie.get('caption_html', ''),
                     parse_mode='HTML'
                 )
+                await query.answer("✅ File sent to your Private Messages!", show_alert=True)
             except Exception as e:
+                if "Forbidden" in str(e) or "bot can't initiate" in str(e).lower() or "bot was blocked" in str(e).lower():
+                    await query.answer("⚠️ Please go to my Private Messages and click START first, then try again!", show_alert=True)
+                    return
                 try:
                     await context.bot.send_video(
-                        chat_id=update.effective_chat.id,
+                        chat_id=user_id,
                         video=movie['file_id'],
                         caption=movie.get('caption_html', ''),
                         parse_mode='HTML'
                     )
+                    await query.answer("✅ File sent to your Private Messages!", show_alert=True)
                 except Exception as ex:
                     print(f"Error sending file: {ex}")
-                    await query.message.reply_text(f"🚨 **Error Sending File:**\n`{ex}`\n\nPlease tell your developer about this error!", parse_mode="Markdown")
+                    await query.answer(f"🚨 Error Sending File to PM: {ex}", show_alert=True)
         else:
-            await query.message.reply_text("🚨 **Error:** This movie was not found in the database. It may have been deleted.")
+            await query.answer("🚨 Error: This movie was not found in the database. It may have been deleted.", show_alert=True)
 
 async def channel_index_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type != 'channel':
