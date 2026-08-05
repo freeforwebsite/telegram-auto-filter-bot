@@ -104,6 +104,51 @@ async def index_movie_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     else:
         await msg.reply_text("⚠️ This file is already in the database.")
 
+def build_paginated_keyboard(results, page, query):
+    ITEMS_PER_PAGE = 10
+    total_results = len(results)
+    total_pages = (total_results + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE
+    
+    start_idx = (page - 1) * ITEMS_PER_PAGE
+    end_idx = start_idx + ITEMS_PER_PAGE
+    
+    page_results = results[start_idx:end_idx]
+    
+    keyboard = []
+    
+    # Fake Filter Buttons (Aesthetic)
+    keyboard.append([
+        InlineKeyboardButton("Quality", callback_data="ignore"),
+        InlineKeyboardButton("Language", callback_data="ignore"),
+        InlineKeyboardButton("Season", callback_data="ignore")
+    ])
+    keyboard.append([InlineKeyboardButton("⬆️ SELECT OPTION HERE ⬆️", callback_data="ignore")])
+    
+    for movie in page_results:
+        btn_text = movie['file_name']
+        if len(btn_text) > 40:
+            btn_text = btn_text[:37] + "..."
+        keyboard.append([InlineKeyboardButton(f"🎬 {btn_text}", callback_data=f"get_{movie['id']}")])
+        
+    # Pagination Footer
+    if total_pages > 1:
+        nav_row = []
+        if page > 1:
+            nav_row.append(InlineKeyboardButton("PAGE", callback_data=f"page_{page-1}_{query}"))
+        else:
+            nav_row.append(InlineKeyboardButton("PAGE", callback_data="ignore"))
+            
+        nav_row.append(InlineKeyboardButton(f"{page}/{total_pages}", callback_data="ignore"))
+        
+        if page < total_pages:
+            nav_row.append(InlineKeyboardButton("NEXT ⏩", callback_data=f"page_{page+1}_{query}"))
+        else:
+            nav_row.append(InlineKeyboardButton("NEXT ⏩", callback_data="ignore"))
+            
+        keyboard.append(nav_row)
+        
+    return InlineKeyboardMarkup(keyboard)
+
 async def group_search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Only listen in groups or supergroups
     if update.effective_chat.type in ['private', 'channel']:
@@ -117,15 +162,8 @@ async def group_search_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     if not results:
         return
         
-    keyboard = []
-    # Limit to top 5 results to avoid massive messages
-    for movie in results[:5]:
-        btn_text = movie['file_name']
-        if len(btn_text) > 40:
-            btn_text = btn_text[:37] + "..."
-        keyboard.append([InlineKeyboardButton(f"🎬 {btn_text}", callback_data=f"get_{movie['id']}")])
-        
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    short_query = query[:40]
+    reply_markup = build_paginated_keyboard(results, 1, short_query)
     
     await update.message.reply_text(
         f"🔍 **Found {len(results)} result(s) for:** `{query}`",
@@ -135,9 +173,34 @@ async def group_search_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
     
     data = query.data
+    
+    if data == "ignore":
+        await query.answer()
+        return
+        
+    if data.startswith("page_"):
+        parts = data.split("_", 2)
+        if len(parts) == 3:
+            page = int(parts[1])
+            search_query = parts[2]
+            
+            results = search_movies(search_query)
+            if not results:
+                await query.answer("Results expired or not found.", show_alert=True)
+                return
+                
+            reply_markup = build_paginated_keyboard(results, page, search_query)
+            try:
+                await query.message.edit_reply_markup(reply_markup=reply_markup)
+            except Exception:
+                pass # Message is not modified
+        await query.answer()
+        return
+        
+    await query.answer()
+    
     if data.startswith("get_"):
         movie_id = data[4:]
         movie = get_movie_by_id(movie_id)
