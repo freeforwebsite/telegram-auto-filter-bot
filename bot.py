@@ -544,6 +544,42 @@ async def tmdbstatus_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     except Exception as e:
         await update.message.reply_text(f"❌ **Error:** {e}")
 
+async def testposter_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text("⚠️ Please provide a movie name! Example: `/testposter avatar`", parse_mode="Markdown")
+        return
+        
+    query = " ".join(context.args)
+    results = search_movies(query)
+    
+    if not results:
+        await update.message.reply_text("❌ That movie is not in your database yet!")
+        return
+        
+    movie = results[0] # Grab the first match
+    
+    if not movie.get("tmdb_processed"):
+        await update.message.reply_text("⏳ The background worker hasn't reached this movie yet. It's still processing! Try another one.", parse_mode="Markdown")
+        return
+        
+    if not movie.get("poster_url"):
+        await update.message.reply_text(f"❌ TMDB was checked, but no poster was found for `{movie.get('file_name')}`.", parse_mode="Markdown")
+        return
+        
+    caption = f"🎬 **{movie.get('title', 'Unknown')}**\n\n"
+    caption += f"⭐ **Rating:** {movie.get('rating', 'N/A')}/10\n"
+    caption += f"📅 **Release Date:** {movie.get('release_date', 'N/A')}\n\n"
+    caption += f"📖 **Plot:** {str(movie.get('overview', 'No plot available.'))[:500]}..."
+    
+    try:
+        await update.message.reply_photo(
+            photo=movie["poster_url"],
+            caption=caption,
+            parse_mode="Markdown"
+        )
+    except Exception as e:
+        await update.message.reply_text(f"❌ Could not send photo: {e}")
+
 WELCOME_TEXT = """🎬 **Welcome to CineVault!** 🎬
 
 This is an automated movie search group powered by **CineSearch**.
@@ -679,6 +715,7 @@ def main():
     application.add_handler(CommandHandler('batch', batch_command))
     application.add_handler(CommandHandler('status', status_command))
     application.add_handler(CommandHandler('tmdbstatus', tmdbstatus_command))
+    application.add_handler(CommandHandler('testposter', testposter_command))
     application.add_handler(CommandHandler('setwelcome', setwelcome_command))
     
     # Catch forwarded messages for batch indexer (must be BEFORE index_movie_handler to intercept correctly if needed)
