@@ -268,7 +268,11 @@ async def group_search_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     if not query or len(query) < 3 or len(query) > 60:
         return
         
+    # 🌟 INSTANT FEEDBACK
+    searching_msg = await update.message.reply_text(f"🔎 ꜱᴇᴀʀᴄʜɪɴɢ `{query}`", parse_mode="Markdown")
+        
     results = search_movies(query)
+    
     if not results:
         not_found_text = (
             f"❌ **Movie Not Found!**\n\n"
@@ -283,27 +287,27 @@ async def group_search_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         keyboard = [[InlineKeyboardButton("🔍 DO GOOGLE", url=google_url)]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
-        msg = await update.message.reply_text(
+        await searching_msg.edit_text(
             not_found_text, 
             reply_markup=reply_markup,
             parse_mode="Markdown"
         )
         # Auto-delete BOTH the user's message and bot's message after 60s
         asyncio.create_task(delete_after(update.message, 60))
-        asyncio.create_task(delete_after(msg, 60))
+        asyncio.create_task(delete_after(searching_msg, 60))
         return
         
     short_query = query[:40]
     reply_markup = build_paginated_keyboard(results, 1, short_query)
     
-    msg = await update.message.reply_text(
+    await searching_msg.edit_text(
         f"🔍 **Found {len(results)} result(s) for:** `{query}`",
         reply_markup=reply_markup,
         parse_mode="Markdown"
     )
     # Auto-delete BOTH the user's message and bot's message after 60s
     asyncio.create_task(delete_after(update.message, 60))
-    asyncio.create_task(delete_after(msg, 60))
+    asyncio.create_task(delete_after(searching_msg, 60))
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
