@@ -525,6 +525,25 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"❌ **MongoDB Error:** {e}")
 
+async def tmdbstatus_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if movies_collection is None:
+        return
+        
+    try:
+        total = movies_collection.count_documents({})
+        processed = movies_collection.count_documents({"tmdb_processed": True})
+        found = movies_collection.count_documents({"tmdb_found": True})
+        
+        msg = f"🎬 **TMDB Background Status**\n\n"
+        msg += f"📊 Total Movies: `{total}`\n"
+        msg += f"✅ Processed: `{processed}`\n"
+        msg += f"🌟 Posters Found: `{found}`\n"
+        msg += f"⏳ Remaining: `{total - processed}`"
+        
+        await update.message.reply_text(msg, parse_mode="Markdown")
+    except Exception as e:
+        await update.message.reply_text(f"❌ **Error:** {e}")
+
 WELCOME_TEXT = """🎬 **Welcome to CineVault!** 🎬
 
 This is an automated movie search group powered by **CineSearch**.
@@ -659,6 +678,7 @@ def main():
     application.add_handler(CommandHandler('start', start_handler))
     application.add_handler(CommandHandler('batch', batch_command))
     application.add_handler(CommandHandler('status', status_command))
+    application.add_handler(CommandHandler('tmdbstatus', tmdbstatus_command))
     application.add_handler(CommandHandler('setwelcome', setwelcome_command))
     
     # Catch forwarded messages for batch indexer (must be BEFORE index_movie_handler to intercept correctly if needed)
