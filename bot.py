@@ -72,20 +72,24 @@ def search_movies(query):
     if movies_collection is None:
         return []
         
-    results = []
-    norm_query = normalize_text(query)
-    words = norm_query.split()
-    
-    # We do a basic find and filter in python for now
-    cursor = movies_collection.find()
-    
-    for item in cursor:
-        norm_name = normalize_text(item['file_name'])
-        # If all words in normalized query are in the normalized filename
-        if all(word in norm_name for word in words):
-            results.append(item)
-            
-    return results
+    # Extract alphanumeric words from the query
+    words = re.findall(r'[a-zA-Z0-9]+', query)
+    if not words:
+        return []
+        
+    # Create a regex condition for every word (case-insensitive)
+    conditions = []
+    for word in words:
+        conditions.append({"file_name": {"$regex": word, "$options": "i"}})
+        
+    # Let MongoDB do the heavy lifting! (Find matching all words, limit to 100)
+    try:
+        cursor = movies_collection.find({"$and": conditions}).limit(100)
+        results = list(cursor)
+        return results
+    except Exception as e:
+        print(f"MongoDB Search Error: {e}")
+        return []
 
 def get_movie_by_id(movie_id):
     if movies_collection is None:
