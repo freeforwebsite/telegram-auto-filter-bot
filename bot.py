@@ -580,6 +580,44 @@ async def testposter_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     except Exception as e:
         await update.message.reply_text(f"❌ Could not send photo: {e}")
 
+async def exporttmdb_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if movies_collection is None:
+        await update.message.reply_text("❌ MongoDB not connected.")
+        return
+        
+    status_msg = await update.message.reply_text("⏳ Generating TMDB completion report...")
+    
+    try:
+        completed = list(movies_collection.find({"tmdb_found": True}))
+        failed = list(movies_collection.find({"tmdb_found": False, "tmdb_processed": True}))
+        
+        report = "=== TMDB ENRICHER EXPORT ===\n\n"
+        
+        report += f"🌟 POSTERS FOUND ({len(completed)}):\n"
+        for c in completed:
+            title = c.get('title') or c.get('file_name', 'Unknown')
+            report += f"- {title}\n"
+            
+        report += f"\n❌ POSTERS NOT FOUND ({len(failed)}):\n"
+        for f in failed:
+            title = f.get('file_name', 'Unknown')
+            report += f"- {title}\n"
+            
+        file_path = "tmdb_export.txt"
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(report)
+            
+        await context.bot.send_document(
+            chat_id=update.effective_chat.id,
+            document=open(file_path, 'rb'),
+            caption="📊 **TMDB Enrichment Report**",
+            parse_mode="Markdown"
+        )
+        await status_msg.delete()
+        os.remove(file_path)
+    except Exception as e:
+        await status_msg.edit_text(f"❌ Error generating report: {e}")
+
 WELCOME_TEXT = """🎬 **Welcome to CineVault!** 🎬
 
 This is an automated movie search group powered by **CineSearch**.
@@ -716,6 +754,7 @@ def main():
     application.add_handler(CommandHandler('status', status_command))
     application.add_handler(CommandHandler('tmdbstatus', tmdbstatus_command))
     application.add_handler(CommandHandler('testposter', testposter_command))
+    application.add_handler(CommandHandler('exporttmdb', exporttmdb_command))
     application.add_handler(CommandHandler('setwelcome', setwelcome_command))
     
     # Catch forwarded messages for batch indexer (must be BEFORE index_movie_handler to intercept correctly if needed)
