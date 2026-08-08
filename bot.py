@@ -106,6 +106,21 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 movie_id = arg[4:]
                 movie = get_movie_by_id(movie_id)
                 if movie:
+                    if movie.get("poster_url"):
+                        caption = f"🎬 **{movie.get('title', 'Unknown')}**\n\n"
+                        caption += f"⭐ **Rating:** {movie.get('rating', 'N/A')}/10\n"
+                        caption += f"📅 **Release Date:** {movie.get('release_date', 'N/A')}\n\n"
+                        caption += f"📖 **Plot:** {str(movie.get('overview', 'No plot available.'))[:500]}..."
+                        try:
+                            await context.bot.send_photo(
+                                chat_id=update.effective_chat.id,
+                                photo=movie["poster_url"],
+                                caption=caption,
+                                parse_mode="Markdown"
+                            )
+                        except Exception as e:
+                            print(f"Failed to send poster: {e}")
+                            
                     try:
                         await context.bot.copy_message(
                             chat_id=update.effective_chat.id,
@@ -393,6 +408,22 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if movie:
             user_id = query.from_user.id
+            
+            if movie.get("poster_url"):
+                caption = f"🎬 **{movie.get('title', 'Unknown')}**\n\n"
+                caption += f"⭐ **Rating:** {movie.get('rating', 'N/A')}/10\n"
+                caption += f"📅 **Release Date:** {movie.get('release_date', 'N/A')}\n\n"
+                caption += f"📖 **Plot:** {str(movie.get('overview', 'No plot available.'))[:500]}..."
+                try:
+                    await context.bot.send_photo(
+                        chat_id=user_id,
+                        photo=movie["poster_url"],
+                        caption=caption,
+                        parse_mode="Markdown"
+                    )
+                except Exception:
+                    pass
+                    
             try:
                 await context.bot.copy_message(
                     chat_id=user_id,
