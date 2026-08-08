@@ -643,9 +643,11 @@ def run_dummy_server():
 
 import datetime
 import pytz
+from tmdb_enricher import start_enricher
 
 def main():
     threading.Thread(target=run_dummy_server, daemon=True).start()
+    threading.Thread(target=start_enricher, daemon=True).start()
     
     application = Application.builder().token(TOKEN).post_init(post_init).build()
     
