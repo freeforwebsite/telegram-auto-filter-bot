@@ -254,8 +254,13 @@ class StreamServer:
                 
             length = end - offset + 1
             
+            mime_type = getattr(media, 'mime_type', 'video/mp4')
+            if mime_type == 'video/x-matroska':
+                # Browsers handle mkv better if masqueraded as webm since WebM is based on Matroska.
+                mime_type = 'video/webm'
+                
             headers = {
-                'Content-Type': 'video/mp4',
+                'Content-Type': mime_type,
                 'Accept-Ranges': 'bytes',
                 'Content-Range': f'bytes {offset}-{end}/{file_size}',
                 'Content-Length': str(length),
@@ -268,10 +273,14 @@ class StreamServer:
             )
             await response.prepare(request)
             
-            # Stream from Pyrogram
-            async for chunk in self.client.stream_media(file_id, limit=length, offset=offset):
-                await response.write(chunk)
-                
+            # Stream from Pyrogram using the message object directly
+            async for chunk in self.client.stream_media(msg, limit=length, offset=offset):
+                try:
+                    await response.write(chunk)
+                except Exception:
+                    # Client disconnected (closed tab, paused, or seeked)
+                    break
+                    
             return response
             
         except Exception as e:
