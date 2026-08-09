@@ -50,71 +50,167 @@ class StreamServer:
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Watch: {filename}</title>
+            <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+            <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
             <style>
                 body {{
                     margin: 0;
                     padding: 0;
-                    background-color: #0f111a;
+                    background: linear-gradient(135deg, #09090e 0%, #171124 50%, #0d1222 100%);
                     color: white;
-                    font-family: 'Inter', sans-serif;
+                    font-family: 'Outfit', sans-serif;
                     display: flex;
                     flex-direction: column;
                     align-items: center;
                     justify-content: center;
-                    height: 100vh;
+                    min-height: 100vh;
+                    overflow-x: hidden;
                 }}
+                /* Ambient Background Blobs */
+                .blob {{
+                    position: absolute;
+                    filter: blur(80px);
+                    z-index: -1;
+                    opacity: 0.6;
+                }}
+                .blob-1 {{
+                    top: -10%; left: -10%;
+                    width: 400px; height: 400px;
+                    background: #ff416c;
+                    animation: float 10s infinite alternate;
+                }}
+                .blob-2 {{
+                    bottom: -10%; right: -10%;
+                    width: 500px; height: 500px;
+                    background: #4facfe;
+                    animation: float 12s infinite alternate-reverse;
+                }}
+                @keyframes float {{
+                    0% {{ transform: translate(0, 0); }}
+                    100% {{ transform: translate(50px, 50px); }}
+                }}
+
                 .player-container {{
-                    width: 90%;
+                    width: 95%;
                     max-width: 1000px;
-                    border-radius: 12px;
+                    border-radius: 20px;
                     overflow: hidden;
-                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-                    background: #1a1d2d;
-                }}
-                video {{
-                    width: 100%;
-                    height: auto;
-                    display: block;
+                    /* Glassmorphism */
+                    background: rgba(25, 25, 35, 0.4);
+                    backdrop-filter: blur(20px);
+                    -webkit-backdrop-filter: blur(20px);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+                    padding: 20px;
+                    margin: 20px 0;
                 }}
                 .header {{
-                    padding: 20px;
                     text-align: center;
-                    background: linear-gradient(90deg, #ff416c 0%, #ff4b2b 100%);
-                    font-weight: bold;
-                    font-size: 1.2rem;
+                    margin-bottom: 20px;
                 }}
-                .buttons {{
+                .header h1 {{
+                    margin: 0;
+                    font-size: 2.2rem;
+                    font-weight: 800;
+                    background: linear-gradient(90deg, #ff416c 0%, #ff4b2b 100%);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    letter-spacing: 1px;
+                }}
+                .header p {{
+                    margin: 5px 0 0 0;
+                    font-size: 0.95rem;
+                    color: rgba(255,255,255,0.6);
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }}
+                .video-wrapper {{
+                    border-radius: 12px;
+                    overflow: hidden;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+                    background: #000;
+                }}
+                /* Custom Plyr Theme */
+                :root {{
+                    --plyr-color-main: #ff416c;
+                    --plyr-video-background: transparent;
+                }}
+                
+                .buttons-container {{
                     display: flex;
                     justify-content: center;
-                    gap: 15px;
-                    padding: 20px;
+                    gap: 20px;
+                    margin-top: 25px;
+                    flex-wrap: wrap;
                 }}
                 .btn {{
-                    padding: 10px 20px;
-                    border-radius: 8px;
+                    padding: 12px 30px;
+                    border-radius: 50px;
                     text-decoration: none;
                     color: white;
-                    font-weight: bold;
-                    background: #2b2e4a;
-                    transition: 0.3s;
+                    font-weight: 600;
+                    font-size: 1rem;
+                    transition: all 0.3s ease;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    border: 1px solid rgba(255,255,255,0.1);
                 }}
-                .btn:hover {{
-                    background: #ff4b2b;
+                .btn-primary {{
+                    background: linear-gradient(90deg, #ff416c 0%, #ff4b2b 100%);
+                    box-shadow: 0 10px 20px rgba(255, 65, 108, 0.3);
+                    border: none;
+                }}
+                .btn-primary:hover {{
+                    transform: translateY(-3px);
+                    box-shadow: 0 15px 25px rgba(255, 65, 108, 0.5);
+                }}
+                .btn-secondary {{
+                    background: rgba(255, 255, 255, 0.05);
+                    backdrop-filter: blur(10px);
+                }}
+                .btn-secondary:hover {{
+                    background: rgba(255, 255, 255, 0.15);
+                    transform: translateY(-3px);
                 }}
             </style>
         </head>
         <body>
+            <div class="blob blob-1"></div>
+            <div class="blob blob-2"></div>
+            
             <div class="player-container">
-                <div class="header">CineSearch Web Player</div>
-                <video controls autoplay>
-                    <source src="/watch/{file_id}/{filename}" type="video/mp4">
-                    Your browser does not support the video tag.
-                </video>
-                <div class="buttons">
-                    <a href="https://t.me/MoviiWrld" class="btn">Join Channel</a>
-                    <a href="/watch/{file_id}/{filename}" class="btn" download="{filename}">Download Now</a>
+                <div class="header">
+                    <h1>CineSearch Player</h1>
+                    <p>{filename}</p>
+                </div>
+                
+                <div class="video-wrapper">
+                    <video id="player" playsinline controls>
+                        <source src="/watch/{file_id}/{filename}" type="video/mp4" />
+                    </video>
+                </div>
+                
+                <div class="buttons-container">
+                    <a href="https://t.me/MoviiWrld" class="btn btn-primary">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                        Join Channel
+                    </a>
+                    <a href="/watch/{file_id}/{filename}" download="{filename}" class="btn btn-secondary">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                        Download Now
+                    </a>
                 </div>
             </div>
+            
+            <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
+            <script>
+                const player = new Plyr('#player', {{
+                    controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
+                    settings: ['captions', 'quality', 'speed', 'loop']
+                }});
+            </script>
         </body>
         </html>
         """
