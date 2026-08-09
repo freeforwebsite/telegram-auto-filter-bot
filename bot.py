@@ -35,7 +35,7 @@ if MONGODB_URI:
     except Exception as e:
         print(f"MongoDB Connection Error: {e}")
 
-def add_movie(file_id, file_name, caption_html, from_chat_id, message_id):
+def add_movie(file_id, file_name, caption, source_chat_id=None, source_message_id=None, file_size=None):
     if movies_collection is None:
         print("WARNING: MongoDB not connected. Cannot add movie.")
         return False
@@ -48,9 +48,10 @@ def add_movie(file_id, file_name, caption_html, from_chat_id, message_id):
         'id': str(uuid.uuid4()),
         'file_id': file_id,
         'file_name': file_name,
-        'caption': caption_html,
-        'source_chat_id': from_chat_id,
-        'source_message_id': message_id
+        'caption': caption,
+        'source_chat_id': source_chat_id,
+        'source_message_id': source_message_id,
+        'file_size': file_size
     }
     movies_collection.insert_one(movie)
     return True
@@ -187,7 +188,7 @@ async def index_movie_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         channel_message_id = msg.message_id
         channel_chat_id = msg.chat.id
         
-    success = add_movie(file_id, file_name, caption, channel_chat_id, channel_message_id)
+    success = add_movie(file_id, file_name, caption, channel_chat_id, channel_message_id, file.file_size)
     if success:
         await msg.reply_text(f"✅ **Saved to Database!**\n\nName: `{file_name}`", parse_mode="Markdown")
     else:
@@ -483,9 +484,10 @@ async def channel_index_handler(update: Update, context: ContextTypes.DEFAULT_TY
     file_id = file.file_id
     file_name = file.file_name or "Unknown_Movie"
     caption = msg.caption_html if msg.caption else ""
+    chat_id = msg.chat.id
+    message_id = msg.message_id
     
-    # Automatically add to database
-    add_movie(file_id, file_name, caption, msg.chat.id, msg.message_id)
+    add_movie(file_id, file_name, caption, chat_id, message_id, file.file_size)
 
 import asyncio
 
@@ -546,7 +548,7 @@ async def batch_forward_handler(update: Update, context: ContextTypes.DEFAULT_TY
                 file_name = file.file_name or "Unknown_Movie"
                 caption = fwd_msg.caption_html if fwd_msg.caption else ""
                 
-                if add_movie(file_id, file_name, caption, forward_chat, msg_id):
+                if add_movie(file_id, file_name, caption, forward_chat, msg_id, file.file_size):
                     success_count += 1
                 else:
                     if movies_collection is None:

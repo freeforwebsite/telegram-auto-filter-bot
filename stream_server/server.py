@@ -333,32 +333,17 @@ class StreamServer:
             if not movie:
                 return web.Response(status=404, text="Movie not found in database")
                 
-            source_chat_id = movie.get('source_chat_id')
-            source_message_id = movie.get('source_message_id')
+            # 2. Extract file_size from DB (if we start saving it), or fallback to chunked stream
+            file_size = movie.get('file_size')
             
-            # Critical Fix: If the movie was stored from a private chat, the source_chat_id is the user's ID.
-            # But the Userbot needs to query the Bot's chat ID to find the message!
-            if source_chat_id and source_chat_id > 0:
-                bot_id = int(BOT_TOKEN.split(':')[0])
-                source_chat_id = bot_id
-            
-            # 2. Fetch the message using Pyrogram to get the exact file_size
-            msg = await self.client.get_messages(source_chat_id, source_message_id)
-            
-            if not msg or msg.empty:
-                logger.error(f"Failed to fetch message {source_message_id} from chat {source_chat_id}")
-                return web.Response(status=404, text="Original message not found in Telegram")
-                
-            media = msg.document or msg.video
-            if not media:
-                return web.Response(status=404, text="Message does not contain media")
-                
-            file_size = media.file_size
+            # We don't need to fetch the message via get_messages! 
+            # Pyrogram can stream directly from the file_id string!
+            # This completely bypasses the "Peer id invalid" error for private channels!
             
             # 3. Handle Range Requests
             range_header = request.headers.get('Range', 0)
             
-            if range_header:
+            if range_header and file_size:
                 match = re.search(r'bytes=(\d+)-(\d*)', range_header)
                 if match:
                     offset = int(match.group(1))
@@ -368,32 +353,31 @@ class StreamServer:
                     end = file_size - 1
             else:
                 offset = 0
-                end = file_size - 1
+                end = file_size - 1 if file_size else None
                 
-            length = end - offset + 1
+            length = (end - offset + 1) if end else 0
             
-            mime_type = getattr(media, 'mime_type', 'video/mp4')
-            if mime_type == 'video/x-matroska':
-                # Masquerading as mp4 allows browsers to use native H264 hardware decoders instantly!
-                # Using webm forces VP9 decoding which fails/hangs for 99% of movies.
-                mime_type = 'video/mp4'
+            # For direct stream links, assume MP4 to trigger hardware decoders
+            mime_type = 'video/mp4'
                 
             headers = {
                 'Content-Type': mime_type,
                 'Accept-Ranges': 'bytes',
-                'Content-Range': f'bytes {offset}-{end}/{file_size}',
-                'Content-Length': str(length),
                 'Content-Disposition': f'inline; filename="{filename}"'
             }
             
+            if file_size:
+                headers['Content-Range'] = f'bytes {offset}-{end}/{file_size}'
+                headers['Content-Length'] = str(length)
+            
             response = web.StreamResponse(
-                status=206 if range_header else 200,
+                status=206 if (range_header and file_size) else 200,
                 headers=headers
             )
             await response.prepare(request)
             
-            # Stream from Pyrogram using the message object directly
-            async for chunk in self.client.stream_media(msg, limit=length, offset=offset):
+            # Stream from Pyrogram using the file_id directly
+            async for chunk in self.client.stream_media(file_id, limit=length, offset=offset):
                 try:
                     await response.write(chunk)
                 except Exception:
