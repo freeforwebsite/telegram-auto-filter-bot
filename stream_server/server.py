@@ -278,12 +278,23 @@ class StreamServer:
             source_chat_id = movie.get('source_chat_id')
             source_message_id = movie.get('source_message_id')
             
+            # Critical Fix: If the movie was stored from a private chat, the source_chat_id is the user's ID.
+            # But the Userbot needs to query the Bot's chat ID to find the message!
+            if source_chat_id and source_chat_id > 0:
+                bot_id = int(BOT_TOKEN.split(':')[0])
+                source_chat_id = bot_id
+            
             # 2. Fetch the message using Pyrogram to get the exact file_size
             msg = await self.client.get_messages(source_chat_id, source_message_id)
-            if not msg:
+            
+            if not msg or msg.empty:
+                logger.error(f"Failed to fetch message {source_message_id} from chat {source_chat_id}")
                 return web.Response(status=404, text="Original message not found in Telegram")
                 
             media = msg.document or msg.video
+            if not media:
+                return web.Response(status=404, text="Message does not contain media")
+                
             file_size = media.file_size
             
             # 3. Handle Range Requests
