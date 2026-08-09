@@ -246,19 +246,19 @@ class StreamServer:
             </div>
             
             <div class="actions-row">
-                <a href="/watch/{file_id}/{filename}" class="btn btn-primary" target="_blank">
-                    <i class="fas fa-play-circle"></i> Open in External Player (VLC/MX)
-                </a>
+                <button onclick="playInMX()" class="btn btn-primary">
+                    <i class="fas fa-play-circle"></i> MX Player (Android)
+                </button>
+                <button onclick="playInVLC()" class="btn btn-primary" style="background-color: #ff8800; color: white;">
+                    <i class="fas fa-play-circle"></i> VLC Player
+                </button>
                 <a href="/watch/{file_id}/{filename}" download="{filename}" class="btn btn-secondary">
                     <i class="fas fa-download"></i> Download File
-                </a>
-                <a href="https://t.me/MoviiWrld" target="_blank" class="btn btn-secondary">
-                    <i class="fab fa-telegram-plane"></i> Join CineVault
                 </a>
             </div>
             
             <p style="margin-top: 15px; font-size: 13px; color: #ffaa00; background: rgba(255,170,0,0.1); padding: 10px; border-radius: 6px; border: 1px solid rgba(255,170,0,0.3);">
-                <i class="fas fa-exclamation-triangle"></i> <b>Playback Stalling?</b> Modern browsers (like Chrome) cannot play HEVC (H.265) or MKV files natively. If the video above shows a black screen or buffers endlessly, please use the <b>Open in External Player</b> button to watch seamlessly via VLC or MX Player!
+                <i class="fas fa-exclamation-triangle"></i> <b>No Audio or Stuttering?</b> Web browsers do not support AC3/DTS audio formats or heavy HEVC video natively. Please click <b>MX Player</b> or <b>VLC Player</b> above to watch flawlessly!
             </p>
         </div>
     </div>
@@ -270,7 +270,19 @@ class StreamServer:
             settings: ['captions', 'quality', 'speed', 'loop']
         }});
 
-        const videoElement = document.getElementById('player');
+        function getStreamUrl() {{
+            return window.location.origin + "/watch/{file_id}/{filename}";
+        }}
+        
+        function playInMX() {{
+            const url = getStreamUrl().replace(/^https?:\/\//, '');
+            window.location.href = `intent://${{url}}#Intent;package=com.mxtech.videoplayer.ad;S.title={filename};end`;
+        }}
+        
+        function playInVLC() {{
+            const url = getStreamUrl();
+            window.location.href = `vlc://${{url}}`;
+        }}
     </script>
 </body>
 </html>
