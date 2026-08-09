@@ -18,14 +18,27 @@ from motor.motor_asyncio import AsyncIOMotorClient
 db_client = AsyncIOMotorClient(MONGO_URI)
 movies_col = db_client['telegram_bot']['movies']
 
+USERBOT_SESSION = os.environ.get('USERBOT_SESSION')
+
 # Initialize Pyrogram Client for Streaming
-stream_client = Client(
-    "stream_bot",
-    api_id=API_ID,
-    api_hash=API_HASH,
-    bot_token=BOT_TOKEN,
-    in_memory=True
-)
+if USERBOT_SESSION:
+    stream_client = Client(
+        "stream_userbot",
+        api_id=API_ID,
+        api_hash=API_HASH,
+        session_string=USERBOT_SESSION,
+        in_memory=True
+    )
+    logger.info("Stream Server using USERBOT_SESSION for unrestricted file streaming!")
+else:
+    stream_client = Client(
+        "stream_bot",
+        api_id=API_ID,
+        api_hash=API_HASH,
+        bot_token=BOT_TOKEN,
+        in_memory=True
+    )
+    logger.warning("Stream Server using BOT_TOKEN. Streaming is limited to 20MB files! Please provide USERBOT_SESSION.")
 
 class StreamServer:
     def __init__(self, client: Client):
