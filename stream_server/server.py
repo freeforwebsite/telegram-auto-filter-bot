@@ -64,9 +64,9 @@ class StreamServer:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Watch: {filename}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
-    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous"/>
+    <script src="https://unpkg.com/movi-player@0.3.5/dist/movi-player.min.js" crossorigin="anonymous"></script>
     <style>
         :root {{
             --bg-deep: #0D0D14;
@@ -401,10 +401,8 @@ class StreamServer:
                 </div>
             </div>
             
-            <div class="video-wrapper">
-                <video id="player" poster="/thumb/{file_id}" playsinline controls>
-                    <source src="/watch/{file_id}/{filename}" type="video/mp4" />
-                </video>
+            <div class="video-wrapper" style="position: relative; aspect-ratio: 16/9; background: #000;">
+                <movi-player style="width: 100%; height: 100%; display: block;" src="/watch/{file_id}/{filename}" poster="/thumb/{file_id}" controls></movi-player>
             </div>
         </div>
 
@@ -442,12 +440,7 @@ class StreamServer:
 
     </div>
 
-    <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
     <script>
-        const player = new Plyr('#player', {{
-            controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
-            settings: ['captions', 'quality', 'speed', 'loop']
-        }});
 
         function getStreamUrl() {{
             return window.location.origin + "/watch/{file_id}/{filename}";
@@ -466,7 +459,11 @@ class StreamServer:
 </body>
 </html>
 """
-        return web.Response(text=html_content, content_type='text/html')
+        headers = {
+            'Cross-Origin-Opener-Policy': 'same-origin',
+            'Cross-Origin-Embedder-Policy': 'require-corp'
+        }
+        return web.Response(text=html_content, content_type='text/html', headers=headers)
 
     async def stream_handler(self, request):
         file_id = request.match_info['file_id']
@@ -508,7 +505,8 @@ class StreamServer:
             headers = {
                 'Content-Type': mime_type,
                 'Accept-Ranges': 'bytes',
-                'Content-Disposition': f'inline; filename="{filename}"'
+                'Content-Disposition': f'inline; filename="{filename}"',
+                'Cross-Origin-Resource-Policy': 'cross-origin'
             }
             
             if file_size:
