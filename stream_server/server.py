@@ -8,9 +8,9 @@ from pyrogram import Client
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-API_ID = os.environ.get('API_ID')
-API_HASH = os.environ.get('API_HASH')
-BOT_TOKEN = os.environ.get('BOT_TOKEN')
+API_ID = int(os.environ.get('API_ID', 36869346))
+API_HASH = os.environ.get('API_HASH', '9abc474ef05c5e46b2210b02eb4c81fc')
+BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
 MONGO_URI = os.environ.get('MONGODB_URI')
 
 # MongoDB Setup
