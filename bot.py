@@ -179,8 +179,8 @@ async def index_movie_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
             print(f"Failed to backup to Database Channel: {e}")
             
     else:
-        pass # Silently ignore duplicates so it doesn't spam the user's PMs when CineScraper is running
-        
+        await msg.reply_text("⚠️ This file is already in the database.")
+
 BOT_USERNAME = None
 
 async def post_init(application: Application):
