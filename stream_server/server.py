@@ -521,14 +521,33 @@ class StreamServer:
             )
             await response.prepare(request)
             
-            # Stream from Pyrogram using the file_id directly
-            async for chunk in self.client.stream_media(file_id, limit=length, offset=offset):
+            # Pyrogram's stream_media uses chunk offsets, typically 1MB per chunk
+            chunk_size = 1024 * 1024
+            chunk_index = offset // chunk_size
+            skip_bytes = offset % chunk_size
+            bytes_left = length
+            
+            # Stream from Pyrogram starting at the precise chunk index
+            async for chunk in self.client.stream_media(file_id, offset=chunk_index):
+                if skip_bytes > 0:
+                    chunk = chunk[skip_bytes:]
+                    skip_bytes = 0
+                    
+                if bytes_left <= len(chunk):
+                    try:
+                        await response.write(chunk[:bytes_left])
+                    except Exception:
+                        pass
+                    break
+                    
                 try:
                     await response.write(chunk)
                 except Exception:
-                    # Client disconnected (closed tab, paused, or seeked)
+                    # Client disconnected
                     break
                     
+                bytes_left -= len(chunk)
+                
             return response
             
         except Exception as e:
