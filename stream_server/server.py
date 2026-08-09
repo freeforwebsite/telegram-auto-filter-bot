@@ -213,14 +213,39 @@ class StreamServer:
             background-color: rgba(255,255,255,0.2);
         }}
 
+        /* Diagnostics Panel */
+        .diagnostics-panel {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 25px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #00ffcc;
+            height: 120px;
+            overflow-y: auto;
+        }
+        .diagnostics-panel p {
+            margin: 2px 0;
+            opacity: 0.8;
+        }
+        .diagnostics-title {
+            color: #fff;
+            font-weight: bold;
+            margin-bottom: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 4px;
+        }
+
         /* Responsive */
-        @media (max-width: 768px) {{
-            .navbar {{ padding: 15px 20px; }}
-            .player-section {{ padding-top: 70px; }}
-            .movie-title {{ font-size: 20px; }}
-            .actions-row {{ width: 100%; flex-direction: column; }}
-            .btn {{ width: 100%; justify-content: center; }}
-        }}
+        @media (max-width: 768px) {
+            .navbar { padding: 15px 20px; }
+            .player-section { padding-top: 70px; }
+            .movie-title { font-size: 20px; }
+            .actions-row { width: 100%; flex-direction: column; }
+            .btn { width: 100%; justify-content: center; }
+        }
     </style>
 </head>
 <body>
@@ -251,15 +276,40 @@ class StreamServer:
                     <i class="fab fa-telegram-plane"></i> Join CineVault
                 </a>
             </div>
+
+            <div class="diagnostics-panel" id="debug-box">
+                <div class="diagnostics-title">Network Diagnostics (Debug Mode)</div>
+            </div>
         </div>
     </div>
 
     <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
     <script>
-        const player = new Plyr('#player', {{
+        const player = new Plyr('#player', {
             controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
             settings: ['captions', 'quality', 'speed', 'loop']
-        }});
+        });
+
+        // Diagnostics Logger
+        const debugBox = document.getElementById('debug-box');
+        const videoElement = document.getElementById('player');
+        
+        function logDebug(message) {
+            const p = document.createElement('p');
+            const time = new Date().toLocaleTimeString();
+            p.innerText = `[${time}] ${message}`;
+            debugBox.appendChild(p);
+            debugBox.scrollTop = debugBox.scrollHeight;
+        }
+
+        logDebug("Player Initialized. Waiting for play...");
+
+        videoElement.addEventListener('loadstart', () => logDebug("Browser requested video file from server..."));
+        videoElement.addEventListener('loadedmetadata', () => logDebug("SUCCESS: Video Metadata Loaded! (Server responded)"));
+        videoElement.addEventListener('waiting', () => logDebug("Buffering: Waiting for more data from server..."));
+        videoElement.addEventListener('playing', () => logDebug("Playing smoothly."));
+        videoElement.addEventListener('stalled', () => logDebug("WARNING: Data transfer stalled. Server might be slow."));
+        videoElement.addEventListener('error', (e) => logDebug("ERROR: Video playback failed."));
     </script>
 </body>
 </html>
