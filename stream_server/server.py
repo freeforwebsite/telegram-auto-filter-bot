@@ -64,203 +64,382 @@ class StreamServer:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Watch: {filename}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
     <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
     <style>
         :root {{
-            --bg-color: #000000;
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255,255,255,0.6);
-            --accent: #E50914; /* Netflix Red style accent */
-            --glass: rgba(20,20,20,0.85);
+            --bg-deep: #0D0D14;
+            --bg-surface: #14141F;
+            --bg-elevated: #1F1F2E;
+            --primary: #8B5CF6; /* Purple accent */
+            --primary-hover: #7C3AED;
+            --text-main: #FFFFFF;
+            --text-muted: rgba(255,255,255,0.6);
+            --border: rgba(255,255,255,0.08);
+            --success: #10B981;
         }}
 
         *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
 
         body {{
             font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-primary);
+            background-color: var(--bg-deep);
+            color: var(--text-main);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             overflow-x: hidden;
+            position: relative;
+        }}
+        
+        /* Subtle Background Gradient Grid */
+        body::before {{
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 0;
+        }}
+        
+        body::after {{
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
         }}
 
-        /* Top Navigation Bar */
-        .navbar {{
-            padding: 20px 40px;
+        /* Header */
+        .header {{
+            position: relative;
+            z-index: 10;
+            padding: 24px 40px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, transparent 100%);
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 10;
         }}
 
-        .logo {{
-            font-size: 24px;
-            font-weight: 600;
-            letter-spacing: -0.5px;
-            color: var(--accent);
+        .brand {{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-main);
         }}
         
-        .logo span {{
-            color: #fff;
+        .brand-icon {{
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #8B5CF6, #EC4899);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
         }}
 
-        /* Main Player Area */
-        .player-section {{
-            flex-grow: 1;
+        .header-actions {{
+            display: flex;
+            gap: 12px;
+        }}
+        
+        .badge-secure {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--success);
+        }}
+        
+        .btn-join {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 20px;
+            background: linear-gradient(135deg, #8B5CF6, #EC4899);
+            border-radius: 100px;
+            font-size: 14px;
+            font-weight: 600;
+            color: white;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }}
+        
+        .btn-join:hover {{
+            opacity: 0.9;
+        }}
+
+        /* Main Content */
+        .container {{
+            position: relative;
+            z-index: 10;
+            flex: 1;
             display: flex;
             flex-direction: column;
-            justify-content: center;
             align-items: center;
+            padding: 20px 20px 60px;
             width: 100%;
-            max-width: 1200px;
+            max-width: 900px;
             margin: 0 auto;
-            padding: 80px 20px 40px;
+        }}
+
+        /* Player Card */
+        .player-card {{
+            width: 100%;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+            margin-bottom: 24px;
+        }}
+        
+        .player-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }}
+        
+        .status-indicator {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            background: rgba(16, 185, 129, 0.1);
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--success);
+        }}
+        
+        .status-dot {{
+            width: 6px;
+            height: 6px;
+            background: var(--success);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--success);
         }}
 
         .video-wrapper {{
             width: 100%;
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-            background: #050505;
+            background: #000;
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }}
 
         /* Customizing Plyr for a more minimal look */
         :root {{
-            --plyr-color-main: var(--accent);
+            --plyr-color-main: var(--primary);
             --plyr-video-background: #000;
+            --plyr-menu-background: var(--bg-elevated);
+            --plyr-menu-color: var(--text-main);
         }}
 
-        /* Movie Info Below Player */
-        .movie-info {{
+        /* Info Card */
+        .info-card {{
             width: 100%;
-            margin-top: 30px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 24px;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 20px;
         }}
-
-        .movie-title {{
-            font-size: 24px;
-            font-weight: 400;
-            line-height: 1.4;
-            color: var(--text-primary);
-        }}
-
-        .movie-meta {{
+        
+        .file-info {{
             display: flex;
-            gap: 15px;
-            font-size: 14px;
-            color: var(--text-secondary);
-            align-items: center;
+            flex-direction: column;
+            gap: 8px;
         }}
-
-        .badge {{
-            border: 1px solid rgba(255,255,255,0.3);
-            padding: 2px 8px;
-            border-radius: 4px;
+        
+        .file-id {{
             font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
+            font-weight: 700;
+            color: var(--text-muted);
+            letter-spacing: 1px;
         }}
-
-        /* Actions Row */
-        .actions-row {{
+        
+        .file-name {{
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-main);
+            word-break: break-all;
+        }}
+        
+        .tags {{
             display: flex;
-            gap: 15px;
-            margin-top: 20px;
+            gap: 10px;
             flex-wrap: wrap;
         }}
-
-        .btn {{
-            display: inline-flex;
+        
+        .tag {{
+            display: flex;
             align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }}
+        
+        .tag i {{
+            color: var(--primary);
+        }}
+
+        .btn-download {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
             gap: 10px;
-            padding: 12px 24px;
-            border-radius: 6px;
-            font-size: 15px;
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #8B5CF6, #EC4899);
+            border-radius: 14px;
+            font-size: 16px;
             font-weight: 600;
+            color: white;
             text-decoration: none;
-            transition: all 0.2s ease;
-            cursor: pointer;
             border: none;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 10px 20px rgba(139, 92, 246, 0.3);
         }}
-
-        .btn-primary {{
-            background-color: var(--text-primary);
-            color: var(--bg-color);
+        
+        .btn-download:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 15px 25px rgba(139, 92, 246, 0.4);
         }}
-
-        .btn-primary:hover {{
-            background-color: rgba(255,255,255,0.8);
+        
+        .external-players {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 10px;
         }}
-
-        .btn-secondary {{
-            background-color: rgba(255,255,255,0.1);
-            color: var(--text-primary);
+        
+        .btn-external {{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 16px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
         }}
-
-        .btn-secondary:hover {{
-            background-color: rgba(255,255,255,0.2);
+        
+        .btn-external i {{
+            font-size: 20px;
+            color: var(--text-main);
         }}
-
+        
+        .btn-external:hover {{
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.2);
+            color: var(--text-main);
         }}
 
         /* Responsive */
         @media (max-width: 768px) {{
-            .navbar {{ padding: 15px 20px; }}
-            .player-section {{ padding-top: 70px; }}
-            .movie-title {{ font-size: 20px; }}
-            .actions-row {{ width: 100%; flex-direction: column; }}
-            .btn {{ width: 100%; justify-content: center; }}
+            .header {{ padding: 20px; flex-direction: column; gap: 15px; }}
+            .container {{ padding: 10px; }}
+            .player-card, .info-card {{ padding: 15px; border-radius: 16px; }}
         }}
     </style>
 </head>
 <body>
 
-    <div class="navbar">
-        <div class="logo">Cine<span>Search</span></div>
+    <div class="header">
+        <div class="brand">
+            <div class="brand-icon"><i class="fas fa-play"></i></div>
+            CineSearch
+        </div>
+        <div class="header-actions">
+            <div class="badge-secure">
+                <i class="fas fa-shield-alt"></i> Secure Stream
+            </div>
+            <a href="https://t.me/MoviiWrld" target="_blank" class="btn-join">
+                <i class="fab fa-telegram-plane"></i> Join Channel
+            </a>
+        </div>
     </div>
 
-    <div class="player-section">
-        <div class="video-wrapper">
-            <video id="player" poster="/thumb/{file_id}" playsinline controls>
-                <source src="/watch/{file_id}/{filename}" type="video/mp4" />
-            </video>
+    <div class="container">
+        
+        <div class="player-card">
+            <div class="player-header">
+                <div class="status-indicator">
+                    <div class="status-dot"></div>
+                    LIVE STREAM
+                </div>
+            </div>
+            
+            <div class="video-wrapper">
+                <video id="player" poster="/thumb/{file_id}" playsinline controls>
+                    <source src="/watch/{file_id}/{filename}" type="video/mp4" />
+                </video>
+            </div>
         </div>
 
-        <div class="movie-info">
-            <h1 class="movie-title">{filename}</h1>
-            <div class="movie-meta">
-                <span class="badge">HD</span>
-                <span><i class="fas fa-shield-alt"></i> Secure Stream</span>
+        <div class="info-card">
+            <div class="file-info">
+                <div class="file-id">ID: {file_id[:12]}...</div>
+                <div class="file-name">{filename}</div>
             </div>
             
-            <div class="actions-row">
-                <button onclick="playInMX()" class="btn btn-primary">
-                    <i class="fas fa-play-circle"></i> MX Player (Android)
-                </button>
-                <button onclick="playInVLC()" class="btn btn-primary" style="background-color: #ff8800; color: white;">
-                    <i class="fas fa-play-circle"></i> VLC Player
-                </button>
-                <a href="/watch/{file_id}/{filename}" download="{filename}" class="btn btn-secondary">
-                    <i class="fas fa-download"></i> Download File
-                </a>
+            <div class="tags">
+                <div class="tag"><i class="fas fa-bolt"></i> Direct Stream</div>
+                <div class="tag"><i class="fas fa-lock"></i> Encrypted</div>
+                <div class="tag"><i class="fas fa-clock"></i> No Buffering</div>
             </div>
             
-            <p style="margin-top: 15px; font-size: 13px; color: #ffaa00; background: rgba(255,170,0,0.1); padding: 10px; border-radius: 6px; border: 1px solid rgba(255,170,0,0.3);">
-                <i class="fas fa-exclamation-triangle"></i> <b>No Audio or Stuttering?</b> Web browsers do not support AC3/DTS audio formats or heavy HEVC video natively. Please click <b>MX Player</b> or <b>VLC Player</b> above to watch flawlessly!
+            <a href="/watch/{file_id}/{filename}" download="{filename}" class="btn-download">
+                <i class="fas fa-download"></i> Download File
+            </a>
+            
+            <p style="text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 5px;">
+                No Audio? Watch in external player:
             </p>
+            
+            <div class="external-players">
+                <button onclick="playInMX()" class="btn-external">
+                    <i class="fas fa-mobile-alt" style="color: #2196F3;"></i>
+                    MX Player
+                </button>
+                <button onclick="playInVLC()" class="btn-external">
+                    <i class="fas fa-traffic-cone" style="color: #FF9800;"></i>
+                    VLC Player
+                </button>
+            </div>
         </div>
+
     </div>
 
     <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
