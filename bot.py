@@ -508,7 +508,8 @@ async def batch_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def batch_forward_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if not batch_users.get(user_id, False):
-        return
+        # User is not in batch mode. Treat this as a normal forwarded movie!
+        return await index_movie_handler(update, context)
         
     msg = update.message
     forward_chat = None
