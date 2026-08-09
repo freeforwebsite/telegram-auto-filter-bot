@@ -363,13 +363,28 @@ class StreamServer:
             # Helper to clean filename
             def clean_title(filename):
                 name = re.sub(r'\.(mkv|mp4|avi|webm)$', '', filename, flags=re.IGNORECASE)
-                tags = [r'1080p', r'720p', r'480p', r'2160p', r'4k', r'x264', r'x265', r'hevc', r'avc', r'10bit', r'hdr', r'webrip', r'web-dl', r'hdrip', r'bluray', r'brrip', r'dvdrip', r'hdtv', r'web', r'dl', r'tamil', r'telugu', r'hindi', r'malayalam', r'kannada', r'english', r'multi', r'audio', r'dual', r'sub', r'esub', r'msub', r'untouched', r'esubs', r'hq', r'line', r'predvd', r'nf', r'ta', r'\[.*?\]', r'\(.*?\)']
-                for tag in tags: name = re.sub(tag, '', name, flags=re.IGNORECASE)
+                
+                # Strip out brackets completely
+                name = re.sub(r'\[.*?\]', '', name)
+                name = re.sub(r'\(.*?\)', '', name)
+                
+                # Strip Season/Episode formats like S05, S05E07, Season 5, Ep 4
+                name = re.sub(r'(?i)(s\d{2}e\d{2}|s\d{2}|season\s*\d+|ep\s*\d+|e\d{2})', '', name)
+                
+                # Tags to strip (with word boundaries!)
+                tags = [r'1080p', r'720p', r'480p', r'2160p', r'4k', r'x264', r'x265', r'hevc', r'avc', r'10bit', r'hdr', r'webrip', r'web-dl', r'hdrip', r'bluray', r'brrip', r'dvdrip', r'hdtv', r'web', r'dl', r'tamil', r'telugu', r'hindi', r'malayalam', r'kannada', r'english', r'multi', r'audio', r'dual', r'sub', r'esub', r'msub', r'untouched', r'esubs', r'hq', r'line', r'predvd', r'nf', r'ta', r'ddp\d\.\d']
+                
+                for tag in tags:
+                    name = re.sub(rf'\b{tag}\b', '', name, flags=re.IGNORECASE)
+                    
                 name = re.sub(r'[\._\-]', ' ', name)
-                name = re.sub(r'\s+', ' ', name).strip()
                 name = re.sub(r'@\w+', '', name)
-                name = re.sub(r't me.*', '', name, flags=re.IGNORECASE)
-                return name.strip()
+                name = re.sub(r'(?i)t me\S*', '', name)
+                
+                # Clean up multiple spaces
+                name = re.sub(r'\s+', ' ', name).strip()
+                
+                return name
                 
             clean_name = clean_title(movie.get('file_name', ''))
             
