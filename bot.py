@@ -778,7 +778,12 @@ def main():
     # Schedule daily job at 4:00 AM IST
     ist = pytz.timezone('Asia/Kolkata')
     target_time = datetime.time(hour=4, minute=0, tzinfo=ist)
-    application.job_queue.run_daily(send_daily_welcome, time=target_time)
+    try:
+        application.job_queue.run_daily(send_daily_welcome, time=target_time)
+    except AttributeError:
+        print("Warning: JobQueue is not installed properly. Daily welcome messages are disabled.")
+    except Exception as e:
+        print(f"Warning: Failed to schedule daily welcome: {e}")
     
     application.add_handler(CommandHandler('start', start_handler))
     application.add_handler(CommandHandler('batch', batch_command))
