@@ -277,9 +277,9 @@ async def delete_after(message, seconds):
     except Exception:
         pass
 
-async def group_search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Only listen in groups or supergroups
-    if update.effective_chat.type in ['private', 'channel']:
+async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Only listen in groups, supergroups, and private messages (ignore channels)
+    if update.effective_chat.type == 'channel':
         return
         
     query = update.message.text
@@ -797,8 +797,8 @@ def main():
     # In channels, listen for NEW media to index automatically
     application.add_handler(MessageHandler(filters.ChatType.CHANNEL & (filters.Document.ALL | filters.VIDEO), channel_index_handler))
     
-    # In groups, listen for text to search
-    application.add_handler(MessageHandler(filters.ChatType.GROUPS & filters.TEXT & ~filters.COMMAND, group_search_handler))
+    # In groups and private chats, listen for text to search
+    application.add_handler(MessageHandler((filters.ChatType.GROUPS | filters.ChatType.PRIVATE) & filters.TEXT & ~filters.COMMAND, search_handler))
     
     # Handle inline buttons
     application.add_handler(CallbackQueryHandler(button_callback))
