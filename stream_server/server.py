@@ -55,9 +55,9 @@ class StreamServer:
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
   <style>
     :root {{
-      --amber: #F59E0B;
-      --coral: #F97316;
-      --crimson: #EF4444;
+      --amber: #00f2fe;
+      --coral: #4facfe;
+      --crimson: #667eea;
       --deep: #0A0A0F;
       --surface: #111118;
       --elevated: #1A1A26;
@@ -83,9 +83,9 @@ class StreamServer:
       position: fixed;
       inset: 0;
       background:
-        radial-gradient(ellipse 70% 60% at 15% 10%, rgba(249,115,22,0.12) 0%, transparent 60%),
-        radial-gradient(ellipse 55% 50% at 85% 80%, rgba(239,68,68,0.1) 0%, transparent 55%),
-        radial-gradient(ellipse 40% 40% at 50% 50%, rgba(245,158,11,0.05) 0%, transparent 60%);
+        radial-gradient(ellipse 70% 60% at 15% 10%, rgba(79,172,254,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 55% 50% at 85% 80%, rgba(102,126,234,0.1) 0%, transparent 55%),
+        radial-gradient(ellipse 40% 40% at 50% 50%, rgba(0,242,254,0.05) 0%, transparent 60%);
       pointer-events: none;
       z-index: 0;
     }}
@@ -197,8 +197,8 @@ class StreamServer:
       width: 56px;
       height: 56px;
       border-radius: 16px;
-      background: linear-gradient(135deg, rgba(249,115,22,0.2), rgba(239,68,68,0.2));
-      border: 1px solid rgba(249,115,22,0.25);
+      background: linear-gradient(135deg, rgba(79,172,254,0.2), rgba(102,126,234,0.2));
+      border: 1px solid rgba(79,172,254,0.25);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -334,7 +334,7 @@ class StreamServer:
       height: 7px;
       border-radius: 50%;
       background: var(--amber);
-      box-shadow: 0 0 8px var(--amber), 0 0 16px rgba(245,158,11,0.5);
+      box-shadow: 0 0 8px var(--amber), 0 0 16px rgba(0,242,254,0.5);
     }}
 
     @keyframes orbitSpin {{ to {{ transform: rotate(360deg); }} }}
@@ -357,8 +357,8 @@ class StreamServer:
     }}
 
     .step.active {{
-      background: rgba(249,115,22,0.1);
-      border-color: rgba(249,115,22,0.3);
+      background: rgba(79,172,254,0.1);
+      border-color: rgba(79,172,254,0.3);
     }}
 
     .step.done {{
@@ -385,7 +385,7 @@ class StreamServer:
       transition: color 0.3s;
     }}
 
-    .step.active .step-txt {{ color: rgba(249,115,22,0.9); }}
+    .step.active .step-txt {{ color: rgba(79,172,254,0.9); }}
     .step.done .step-txt {{ color: rgba(16,185,129,0.8); }}
 
     /* ── Download button ── */
@@ -416,7 +416,7 @@ class StreamServer:
       color: #fff;
       background: linear-gradient(135deg, var(--amber), var(--coral), var(--crimson));
       border-color: transparent;
-      box-shadow: 0 8px 32px rgba(239,68,68,0.35), 0 2px 8px rgba(0,0,0,0.3);
+      box-shadow: 0 8px 32px rgba(102,126,234,0.35), 0 2px 8px rgba(0,0,0,0.3);
       animation: btnPulse 2s ease-in-out infinite;
     }}
 
@@ -430,7 +430,7 @@ class StreamServer:
 
     #download-btn.ready:hover {{
       transform: translateY(-2px);
-      box-shadow: 0 12px 40px rgba(239,68,68,0.5), 0 4px 12px rgba(0,0,0,0.4);
+      box-shadow: 0 12px 40px rgba(102,126,234,0.5), 0 4px 12px rgba(0,0,0,0.4);
       animation: none;
     }}
 
@@ -439,8 +439,8 @@ class StreamServer:
     }}
 
     @keyframes btnPulse {{
-      0%, 100% {{ box-shadow: 0 8px 32px rgba(239,68,68,0.35); }}
-      50% {{ box-shadow: 0 8px 48px rgba(239,68,68,0.6), 0 0 0 6px rgba(239,68,68,0.08); }}
+      0%, 100% {{ box-shadow: 0 8px 32px rgba(102,126,234,0.35); }}
+      50% {{ box-shadow: 0 8px 48px rgba(102,126,234,0.6), 0 0 0 6px rgba(102,126,234,0.08); }}
     }}
 
     /* Shimmer sweep */
@@ -463,7 +463,7 @@ class StreamServer:
       width: 100%;
       max-width: 420px;
       background: var(--surface);
-      border: 1px solid rgba(249,115,22,0.2);
+      border: 1px solid rgba(79,172,254,0.2);
       border-radius: 20px;
       padding: 22px 24px;
       margin-bottom: 14px;
@@ -483,7 +483,7 @@ class StreamServer:
       width: 140px;
       height: 140px;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(249,115,22,0.12), transparent 70%);
+      background: radial-gradient(circle, rgba(79,172,254,0.12), transparent 70%);
       pointer-events: none;
     }}
 
@@ -504,7 +504,7 @@ class StreamServer:
       justify-content: center;
       font-size: 20px;
       flex-shrink: 0;
-      box-shadow: 0 4px 16px rgba(239,68,68,0.3);
+      box-shadow: 0 4px 16px rgba(102,126,234,0.3);
     }}
 
     .tg-info-title {{
@@ -544,7 +544,7 @@ class StreamServer:
       background: linear-gradient(90deg, #F59E0B, #F97316);
       border: none;
       transition: all 0.25s ease;
-      box-shadow: 0 4px 20px rgba(245,158,11,0.3);
+      box-shadow: 0 4px 20px rgba(0,242,254,0.3);
       position: relative;
       overflow: hidden;
     }}
@@ -560,7 +560,7 @@ class StreamServer:
 
     .tg-btn:hover {{
       transform: translateY(-2px);
-      box-shadow: 0 8px 28px rgba(245,158,11,0.45);
+      box-shadow: 0 8px 28px rgba(0,242,254,0.45);
     }}
 
     /* ── Footer ── */
@@ -667,7 +667,7 @@ class StreamServer:
 
     <!-- Header -->
     <div class="header">
-      <div class="logo">Love<span>ToRide</span></div>
+      <div class="logo">Cine<span>Search</span></div>
       <div class="secure-badge">
         <i class="fas fa-circle"></i>
         Secure Transfer
@@ -754,11 +754,11 @@ class StreamServer:
       <div class="tg-row">
         <div class="tg-icon"><i class="fas fa-film"></i></div>
         <div>
-          <div class="tg-info-title">Hollywood Tamil Dubbed</div>
+          <div class="tg-info-title">CineVault Movies</div>
           <div class="tg-info-sub">Exclusive Content Channel</div>
         </div>
       </div>
-      <p class="tg-desc">Get the latest Hollywood blockbusters dubbed in Tamil — HD quality, updated daily. Join 50k+ members.</p>
+      <p class="tg-desc">Get the latest movies and TV shows in stunning HD quality, updated daily. Join our official channel.</p>
       <a href="https://t.me/MoviiWrld" class="tg-btn" target="_blank">
         <i class="fab fa-telegram-plane"></i>
         Join Channel — Free
@@ -772,7 +772,7 @@ class StreamServer:
         <div class="footer-tag"><i class="fas fa-shield-alt"></i> Encrypted</div>
         <div class="footer-tag"><i class="fas fa-infinity"></i> No Limits</div>
       </div>
-      <p>© 2025 LoveToRide. Premium Secure File Transfer.</p>
+      <p>© 2025 CineSearch. Premium Secure File Transfer.</p>
     </div>
 
   </div>
