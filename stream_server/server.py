@@ -214,7 +214,7 @@ class StreamServer:
         }}
 
         /* Diagnostics Panel */
-        .diagnostics-panel {
+        .diagnostics-panel {{
             background: rgba(0, 0, 0, 0.5);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 8px;
@@ -225,18 +225,18 @@ class StreamServer:
             color: #00ffcc;
             height: 120px;
             overflow-y: auto;
-        }
-        .diagnostics-panel p {
+        }}
+        .diagnostics-panel p {{
             margin: 2px 0;
             opacity: 0.8;
-        }
-        .diagnostics-title {
+        }}
+        .diagnostics-title {{
             color: #fff;
             font-weight: bold;
             margin-bottom: 8px;
             border-bottom: 1px solid rgba(255,255,255,0.1);
             padding-bottom: 4px;
-        }
+        }}
 
         /* Responsive */
         @media (max-width: 768px) {{
