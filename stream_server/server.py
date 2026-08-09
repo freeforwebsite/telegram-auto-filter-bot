@@ -403,8 +403,10 @@ class StreamServer:
             return response
             
         except Exception as e:
-            logger.error(f"Stream Error: {{e}}")
-            return web.Response(status=500, text="Streaming Failed")
+            import traceback
+            tb = traceback.format_exc()
+            logger.error(f"Stream Error:\n{tb}")
+            return web.Response(status=500, text=f"Streaming Failed!\n\nReason: {e}\n\nTraceback:\n{tb}")
 
 
     async def thumb_handler(self, request):
