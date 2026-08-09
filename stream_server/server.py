@@ -213,29 +213,6 @@ class StreamServer:
             background-color: rgba(255,255,255,0.2);
         }}
 
-        /* Diagnostics Panel */
-        .diagnostics-panel {{
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 25px;
-            font-family: monospace;
-            font-size: 12px;
-            color: #00ffcc;
-            height: 120px;
-            overflow-y: auto;
-        }}
-        .diagnostics-panel p {{
-            margin: 2px 0;
-            opacity: 0.8;
-        }}
-        .diagnostics-title {{
-            color: #fff;
-            font-weight: bold;
-            margin-bottom: 8px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            padding-bottom: 4px;
         }}
 
         /* Responsive */
@@ -283,10 +260,6 @@ class StreamServer:
             <p style="margin-top: 15px; font-size: 13px; color: #ffaa00; background: rgba(255,170,0,0.1); padding: 10px; border-radius: 6px; border: 1px solid rgba(255,170,0,0.3);">
                 <i class="fas fa-exclamation-triangle"></i> <b>Playback Stalling?</b> Modern browsers (like Chrome) cannot play HEVC (H.265) or MKV files natively. If the video above shows a black screen or buffers endlessly, please use the <b>Open in External Player</b> button to watch seamlessly via VLC or MX Player!
             </p>
-
-            <div class="diagnostics-panel" id="debug-box">
-                <div class="diagnostics-title">Network Diagnostics (Debug Mode)</div>
-            </div>
         </div>
     </div>
 
@@ -297,26 +270,7 @@ class StreamServer:
             settings: ['captions', 'quality', 'speed', 'loop']
         }});
 
-        // Diagnostics Logger
-        const debugBox = document.getElementById('debug-box');
         const videoElement = document.getElementById('player');
-        
-        function logDebug(message) {{
-            const p = document.createElement('p');
-            const time = new Date().toLocaleTimeString();
-            p.innerText = `[${{time}}] ${{message}}`;
-            debugBox.appendChild(p);
-            debugBox.scrollTop = debugBox.scrollHeight;
-        }}
-
-        logDebug("Player Initialized. Waiting for play...");
-
-        videoElement.addEventListener('loadstart', () => logDebug("Browser requested video file from server..."));
-        videoElement.addEventListener('loadedmetadata', () => logDebug("SUCCESS: Video Metadata Loaded! (Server responded)"));
-        videoElement.addEventListener('waiting', () => logDebug("Buffering: Waiting for more data from server..."));
-        videoElement.addEventListener('playing', () => logDebug("Playing smoothly."));
-        videoElement.addEventListener('stalled', () => logDebug("WARNING: Data transfer stalled. Server might be slow."));
-        videoElement.addEventListener('error', (e) => logDebug("ERROR: Video playback failed."));
     </script>
 </body>
 </html>
