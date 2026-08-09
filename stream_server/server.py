@@ -317,8 +317,9 @@ class StreamServer:
             
             mime_type = getattr(media, 'mime_type', 'video/mp4')
             if mime_type == 'video/x-matroska':
-                # Browsers handle mkv better if masqueraded as webm since WebM is based on Matroska.
-                mime_type = 'video/webm'
+                # Masquerading as mp4 allows browsers to use native H264 hardware decoders instantly!
+                # Using webm forces VP9 decoding which fails/hangs for 99% of movies.
+                mime_type = 'video/mp4'
                 
             headers = {
                 'Content-Type': mime_type,
