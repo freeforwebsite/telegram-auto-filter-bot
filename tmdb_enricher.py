@@ -95,7 +95,7 @@ def search_tmdb(title):
     return None
 
 def start_enricher():
-    print("🎬 Starting TMDB Enricher Background Worker...")
+    print("Starting TMDB Enricher Background Worker...")
     
     while True:
         try:

@@ -239,13 +239,13 @@ class StreamServer:
         }
 
         /* Responsive */
-        @media (max-width: 768px) {
-            .navbar { padding: 15px 20px; }
-            .player-section { padding-top: 70px; }
-            .movie-title { font-size: 20px; }
-            .actions-row { width: 100%; flex-direction: column; }
-            .btn { width: 100%; justify-content: center; }
-        }
+        @media (max-width: 768px) {{
+            .navbar {{ padding: 15px 20px; }}
+            .player-section {{ padding-top: 70px; }}
+            .movie-title {{ font-size: 20px; }}
+            .actions-row {{ width: 100%; flex-direction: column; }}
+            .btn {{ width: 100%; justify-content: center; }}
+        }}
     </style>
 </head>
 <body>
@@ -285,22 +285,22 @@ class StreamServer:
 
     <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
     <script>
-        const player = new Plyr('#player', {
+        const player = new Plyr('#player', {{
             controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
             settings: ['captions', 'quality', 'speed', 'loop']
-        });
+        }});
 
         // Diagnostics Logger
         const debugBox = document.getElementById('debug-box');
         const videoElement = document.getElementById('player');
         
-        function logDebug(message) {
+        function logDebug(message) {{
             const p = document.createElement('p');
             const time = new Date().toLocaleTimeString();
-            p.innerText = `[${time}] ${message}`;
+            p.innerText = `[${{time}}] ${{message}}`;
             debugBox.appendChild(p);
             debugBox.scrollTop = debugBox.scrollHeight;
-        }
+        }}
 
         logDebug("Player Initialized. Waiting for play...");
 
