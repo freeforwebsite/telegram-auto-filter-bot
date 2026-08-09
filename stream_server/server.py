@@ -66,7 +66,7 @@ class StreamServer:
     <title>Watch: {filename}</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous"/>
-    <script src="https://moviplayer.com/dist/element.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/movi-player@0.3.5/dist/element.js" crossorigin="anonymous"></script>
     <style>
         :root {{
             --bg-deep: #0D0D14;
