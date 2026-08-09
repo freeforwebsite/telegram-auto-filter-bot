@@ -41,7 +41,11 @@ def add_movie(file_id, file_name, caption, source_chat_id=None, source_message_i
         return False
         
     # Check if file already exists
-    if movies_collection.find_one({'file_id': file_id}):
+    existing_movie = movies_collection.find_one({'file_id': file_id})
+    if existing_movie:
+        if not existing_movie.get('file_size') and file_size:
+            movies_collection.update_one({'_id': existing_movie['_id']}, {'$set': {'file_size': file_size}})
+            return True
         return False
         
     movie = {
@@ -508,8 +512,7 @@ async def batch_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def batch_forward_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if not batch_users.get(user_id, False):
-        # User is not in batch mode. Treat this as a normal forwarded movie!
-        return await index_movie_handler(update, context)
+        return
         
     msg = update.message
     forward_chat = None
