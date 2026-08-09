@@ -52,11 +52,17 @@ def add_movie(file_id, file_name, caption_html, from_chat_id, message_id):
         'source_chat_id': from_chat_id,
         'source_message_id': message_id
     }
-    
     movies_collection.insert_one(movie)
     return True
 
 import re
+import urllib.parse
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+def get_watch_keyboard(movie):
+    render_url = os.environ.get('RENDER_EXTERNAL_URL', 'http://localhost:10000')
+    watch_url = f"{render_url}/player/{movie['file_id']}/{urllib.parse.quote(movie['file_name'])}"
+    return InlineKeyboardMarkup([[InlineKeyboardButton("▶️ Watch Online", url=watch_url)]])
 
 def normalize_text(text):
     text = text.lower()
@@ -125,7 +131,8 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         await context.bot.copy_message(
                             chat_id=update.effective_chat.id,
                             from_chat_id=movie['source_chat_id'],
-                            message_id=movie['source_message_id']
+                            message_id=movie['source_message_id'],
+                            reply_markup=get_watch_keyboard(movie)
                         )
                     except Exception as e:
                         try:
@@ -133,7 +140,8 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 chat_id=update.effective_chat.id,
                                 document=movie['file_id'],
                                 caption=movie.get('caption', ''),
-                                parse_mode='HTML'
+                                parse_mode='HTML',
+                                reply_markup=get_watch_keyboard(movie)
                             )
                         except Exception as ex:
                             await update.message.reply_text(f"🚨 **Error Sending File:**\n`{ex}`", parse_mode="Markdown")
@@ -187,6 +195,11 @@ async def post_init(application: Application):
     global BOT_USERNAME
     BOT_USERNAME = application.bot.username
     print(f"Bot Username: {BOT_USERNAME}")
+    
+    # Start the powerful aiohttp Streaming Server inside PTB's asyncio loop!
+    from stream_server.server import start_stream_server
+    import asyncio
+    asyncio.create_task(start_stream_server())
 
 def build_paginated_keyboard(results, page, query):
     ITEMS_PER_PAGE = 10
@@ -428,7 +441,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.copy_message(
                     chat_id=user_id,
                     from_chat_id=movie['source_chat_id'],
-                    message_id=movie['source_message_id']
+                    message_id=movie['source_message_id'],
+                    reply_markup=get_watch_keyboard(movie)
                 )
                 await query.answer("✅ File sent to your Private Messages!", show_alert=True)
             except Exception as e:
@@ -440,7 +454,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         chat_id=user_id,
                         document=movie['file_id'],
                         caption=movie.get('caption', ''),
-                        parse_mode='HTML'
+                        parse_mode='HTML',
+                        reply_markup=get_watch_keyboard(movie)
                     )
                     await query.answer("✅ File sent to your Private Messages!", show_alert=True)
                 except Exception as ex:
@@ -753,24 +768,12 @@ async def setwelcome_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     except Exception as e:
         await update.message.reply_text(f"Error setting up welcome message: {e}")
 
-# --- Dummy Web Server for Render ---
-class DummyHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"Auto Filter Bot is running")
-
-def run_dummy_server():
-    port = int(os.environ.get("PORT", 10000))
-    server = HTTPServer(('0.0.0.0', port), DummyHandler)
-    server.serve_forever()
-
 import datetime
 import pytz
 from tmdb_enricher import start_enricher
+import threading
 
 def main():
-    threading.Thread(target=run_dummy_server, daemon=True).start()
     threading.Thread(target=start_enricher, daemon=True).start()
     
     application = Application.builder().token(TOKEN).post_init(post_init).build()

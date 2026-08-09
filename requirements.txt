@@ -4,3 +4,6 @@ apscheduler
 pytz
 requests
 python-dotenv
+aiohttp
+pyrogram
+tgcrypto
