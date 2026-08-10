@@ -67,7 +67,6 @@ class StreamServer:
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
     <script src="https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.js"></script>
-    <script type="module" src="https://cdn.jsdelivr.net/npm/movi-player@0.3.5/dist/element.js" crossorigin="anonymous"></script>
     <style>
         :root {{
             --bg-deep: #0D0D14;
@@ -411,8 +410,6 @@ class StreamServer:
             
             <div class="video-wrapper">
                 <div class="artplayer-app"></div>
-                <!-- Hidden Movi-Player for WASM AC3 Audio Decoding -->
-                <movi-player id="audio-player" style="display: none;" src="/watch/{file_id}/{filename}"></movi-player>
             </div>
         </div>
 
@@ -461,7 +458,7 @@ class StreamServer:
                 poster: '/thumb/{file_id}',
                 theme: '#e83e8c', // Pink/Purple theme
                 volume: 1,
-                muted: true, // Native video must be muted to avoid echo, WASM handles audio
+                muted: false, // Ensure native audio is enabled
                 autoplay: false,
                 pip: true,
                 autoSize: true,
@@ -495,36 +492,6 @@ class StreamServer:
                         }}
                     }}
                 ]
-            }});
-            
-            const audioPlayer = document.getElementById('audio-player');
-            
-            // Synchronize ArtPlayer events with the hidden Movi-Player AC3 audio engine
-            art.on('play', () => {{
-                if (typeof audioPlayer.play === 'function') audioPlayer.play();
-            }});
-            
-            art.on('pause', () => {{
-                if (typeof audioPlayer.pause === 'function') audioPlayer.pause();
-            }});
-            
-            art.on('seek', (currentTime) => {{
-                if (audioPlayer) audioPlayer.currentTime = currentTime;
-            }});
-            
-            art.on('waiting', () => {{
-                if (typeof audioPlayer.pause === 'function') audioPlayer.pause();
-            }});
-            
-            art.on('playing', () => {{
-                if (typeof audioPlayer.play === 'function') audioPlayer.play();
-            }});
-            
-            art.on('video:volumechange', () => {{
-                if (audioPlayer && art.video) {{
-                    audioPlayer.volume = art.video.volume;
-                    if (art.video.muted) audioPlayer.volume = 0;
-                }}
             }});
         }});
         function getStreamUrl() {{
