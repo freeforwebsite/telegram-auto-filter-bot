@@ -66,7 +66,7 @@ class StreamServer:
     <title>Watch: {filename}</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
-    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+    <script src="https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.js"></script>
     <script type="module" src="https://cdn.jsdelivr.net/npm/movi-player@0.3.5/dist/element.js" crossorigin="anonymous"></script>
     <style>
         :root {{
@@ -246,20 +246,18 @@ class StreamServer:
             position: relative;
         }}
         
-        /* Force Plyr video to maintain aspect ratio and not stretch */
-        .plyr__video-wrapper video {{
-            object-fit: contain !important;
-            width: 100% !important;
-            height: auto !important;
-            max-height: 70vh !important;
+        .artplayer-app {{
+            width: 100%;
+            aspect-ratio: 16/9;
+            max-height: 70vh;
         }}
-
-        /* Customizing Plyr for a more minimal look */
-        :root {{
-            --plyr-color-main: var(--primary);
-            --plyr-video-background: #000;
-            --plyr-menu-background: var(--bg-elevated);
-            --plyr-menu-color: var(--text-main);
+        
+        /* Mobile adjustments for player */
+        @media (max-width: 768px) {{
+            .artplayer-app {{
+                aspect-ratio: auto;
+                height: 250px;
+            }}
         }}
 
         /* Info Card */
@@ -412,9 +410,7 @@ class StreamServer:
             </div>
             
             <div class="video-wrapper">
-                <video id="player" poster="/thumb/{file_id}" playsinline controls muted>
-                    <source src="/watch/{file_id}/{filename}" type="video/mp4" />
-                </video>
+                <div class="artplayer-app"></div>
                 <!-- Hidden Movi-Player for WASM AC3 Audio Decoding -->
                 <movi-player id="audio-player" style="display: none;" src="/watch/{file_id}/{filename}"></movi-player>
             </div>
@@ -455,46 +451,79 @@ class StreamServer:
     </div>
     </div>
 
-    <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {{
-            const player = new Plyr('#player', {{
-                controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
-                settings: ['captions', 'quality', 'speed'],
-                muted: true // Mute native video to avoid double audio, let WASM handle it
+            
+            // Initialize ArtPlayer (matches the UI you requested)
+            const art = new Artplayer({{
+                container: '.artplayer-app',
+                url: '/watch/{file_id}/{filename}',
+                poster: '/thumb/{file_id}',
+                theme: '#e83e8c', // Pink/Purple theme
+                volume: 1,
+                muted: true, // Native video must be muted to avoid echo, WASM handles audio
+                autoplay: false,
+                pip: true,
+                autoSize: true,
+                autoMini: true,
+                setting: true,
+                loop: false,
+                flip: true,
+                playbackRate: true,
+                aspectRatio: true,
+                fullscreen: true,
+                fullscreenWeb: true,
+                subtitleOffset: false,
+                miniProgressBar: true,
+                mutex: true,
+                backdrop: true,
+                playsInline: true,
+                autoPlayback: true,
+                airplay: true,
+                fastForward: true,
+                layers: [
+                    {{
+                        html: '<div style="position: absolute; top: 15px; left: 15px; background: rgba(16, 185, 129, 0.15); padding: 4px 12px; border-radius: 100px; display: flex; align-items: center; gap: 6px; color: #10B981; font-weight: 600; font-size: 11px; border: 1px solid rgba(16, 185, 129, 0.2); backdrop-filter: blur(4px);"><div style="width: 5px; height: 5px; background: #10B981; border-radius: 50%; box-shadow: 0 0 8px #10B981;"></div> LIVE STREAM</div>',
+                        name: 'liveIndicator',
+                        style: {{
+                            position: 'absolute',
+                            top: '0',
+                            left: '0',
+                            width: '100%',
+                            height: '100%',
+                            pointerEvents: 'none'
+                        }}
+                    }}
+                ]
             }});
             
             const audioPlayer = document.getElementById('audio-player');
             
-            // Synchronize Playback
-            player.on('play', () => {{
+            // Synchronize ArtPlayer events with the hidden Movi-Player AC3 audio engine
+            art.on('play', () => {{
                 if (typeof audioPlayer.play === 'function') audioPlayer.play();
             }});
             
-            player.on('pause', () => {{
+            art.on('pause', () => {{
                 if (typeof audioPlayer.pause === 'function') audioPlayer.pause();
             }});
             
-            player.on('seeking', () => {{
-                if (audioPlayer) audioPlayer.currentTime = player.currentTime;
+            art.on('seek', (currentTime) => {{
+                if (audioPlayer) audioPlayer.currentTime = currentTime;
             }});
             
-            player.on('seeked', () => {{
-                if (audioPlayer) audioPlayer.currentTime = player.currentTime;
-            }});
-            
-            player.on('waiting', () => {{
+            art.on('waiting', () => {{
                 if (typeof audioPlayer.pause === 'function') audioPlayer.pause();
             }});
             
-            player.on('playing', () => {{
+            art.on('playing', () => {{
                 if (typeof audioPlayer.play === 'function') audioPlayer.play();
             }});
             
-            player.on('volumechange', () => {{
-                if (audioPlayer) {{
-                    audioPlayer.volume = player.volume;
-                    if (player.muted) audioPlayer.volume = 0;
+            art.on('video:volumechange', () => {{
+                if (audioPlayer && art.video) {{
+                    audioPlayer.volume = art.video.volume;
+                    if (art.video.muted) audioPlayer.volume = 0;
                 }}
             }});
         }});
