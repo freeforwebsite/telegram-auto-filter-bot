@@ -445,12 +445,12 @@ class StreamServer:
 
     <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const player = new Plyr('#player', {
+        document.addEventListener('DOMContentLoaded', () => {{
+            const player = new Plyr('#player', {{
                 controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
                 settings: ['captions', 'quality', 'speed']
-            });
-        });
+            }});
+        }});
         function getStreamUrl() {{
             return window.location.origin + "/watch/{file_id}/{filename}";
         }}
