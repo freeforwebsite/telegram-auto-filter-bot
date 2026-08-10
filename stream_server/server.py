@@ -407,7 +407,7 @@ class StreamServer:
                 <video id="native-video" playsinline muted preload="none" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;">
                 </video>
                 <!-- Movi-Player (UI + Audio Engine) -->
-                <movi-player id="ui-player" src="/watch/{file_id}/{filename}" poster="/thumb/{file_id}" controls style="position: absolute; inset: 0; width: 100%; height: 100%; z-index: 10;"></movi-player>
+                <movi-player id="ui-player" src="/watch/{file_id}/{filename}" poster="/thumb/{file_id}" controls style="position: absolute; inset: 0; width: 100%; height: 100%; z-index: 10; background: transparent !important;"></movi-player>
             </div>
         </div>
 
@@ -456,13 +456,18 @@ class StreamServer:
                 if (uiPlayer.shadowRoot) {{
                     const style = document.createElement('style');
                     // Hide the canvas/video layer so the native video below is visible, but keep UI controls visible
-                    style.textContent = 'canvas, video {{ opacity: 0 !important; }} .movi-poster {{ display: none !important; }}';
+                    style.textContent = `
+                        canvas, video {{ opacity: 0 !important; }} 
+                        .movi-poster {{ display: none !important; }}
+                        .movi-player, .container, .video-container, .player-container, main {{ background: transparent !important; background-color: transparent !important; }}
+                    `;
                     uiPlayer.shadowRoot.appendChild(style);
                     clearInterval(injectStyle);
                 }}
             }}, 100);
 
-            const streamUrl = "/watch/{file_id}/{filename}";
+            // Fetch video/mp4 for Native Video to force Chrome's HEVC hardware decoder to work
+            const streamUrl = "/watch/{file_id}/{filename}?fake_mp4=true";
             let nativeLoaded = false;
 
             // Strict synchronization loop
@@ -550,8 +555,12 @@ class StreamServer:
             length = (end - offset + 1) if end else 0
             
             # Determine correct mime type so browsers properly demux MKV audio (AAC)
-            mime_type, _ = mimetypes.guess_type(filename)
-            mime_type = mime_type or 'video/mp4'
+            fake_mp4 = request.query.get('fake_mp4')
+            if fake_mp4 == 'true':
+                mime_type = 'video/mp4'
+            else:
+                mime_type, _ = mimetypes.guess_type(filename)
+                mime_type = mime_type or 'video/mp4'
                 
             headers = {
                 'Content-Type': mime_type,
