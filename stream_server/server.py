@@ -500,13 +500,34 @@ class StreamServer:
         }}
         
         function playInMX() {{
-            const url = getStreamUrl().replace(/^https?:\/\//, '');
-            window.location.href = `intent://${{url}}#Intent;package=com.mxtech.videoplayer.ad;S.title={filename};end`;
+            const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+            if (/android/i.test(userAgent)) {{
+                const url = getStreamUrl().replace(/^https?:\/\//, '');
+                window.location.href = `intent://${{url}}#Intent;package=com.mxtech.videoplayer.ad;S.title={filename};end`;
+            }} else {{
+                alert('MX Player is designed for Mobile! If you are on PC, please use the VLC Player button instead.');
+            }}
         }}
         
         function playInVLC() {{
-            const url = getStreamUrl();
-            window.location.href = `vlc://${{url}}`;
+            const fullUrl = getStreamUrl();
+            const cleanUrl = fullUrl.replace(/^https?:\/\//, '');
+            const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+            
+            if (/android/i.test(userAgent)) {{
+                // Android Intent
+                window.location.href = `intent://${{cleanUrl}}#Intent;package=org.videolan.vlc;type=video/*;S.title={filename};end`;
+            }} else if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {{
+                // iOS Scheme
+                window.location.href = `vlc://${{fullUrl}}`;
+            }} else {{
+                // Desktop / PC (Browsers block launching local apps)
+                navigator.clipboard.writeText(fullUrl).then(() => {{
+                    alert('Stream link copied to your clipboard! 📋\\n\\nTo watch with Audio Tracks on PC:\\n1. Open VLC Player\\n2. Press Ctrl + N (Media -> Open Network Stream)\\n3. Paste the link and click Play!');
+                }}).catch(() => {{
+                    alert('Please copy this link and paste it into VLC (Media -> Open Network Stream):\\n\\n' + fullUrl);
+                }});
+            }}
         }}
     </script>
 </body>
