@@ -403,8 +403,7 @@ class StreamServer:
             
             <div class="video-wrapper" style="position: relative; aspect-ratio: 16/9; background: #000; overflow: hidden;">
                 <!-- Native Video Engine (plays video, muted, no controls) -->
-                <video id="native-video" playsinline muted style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;">
-                    <source src="/watch/{file_id}/{filename}" type="video/mp4" />
+                <video id="native-video" playsinline muted preload="none" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;">
                 </video>
                 <!-- Movi-Player (UI + Audio Engine) -->
                 <movi-player id="ui-player" src="/watch/{file_id}/{filename}" poster="/thumb/{file_id}" controls style="position: absolute; inset: 0; width: 100%; height: 100%; z-index: 10;"></movi-player>
@@ -462,19 +461,32 @@ class StreamServer:
                 }}
             }}, 100);
 
+            const streamUrl = "/watch/{file_id}/{filename}";
+            let nativeLoaded = false;
+
             // Strict synchronization loop
             setInterval(() => {{
                 if (uiPlayer.player) {{
-                    // Sync Play/Pause state (Movi-Player is the boss)
-                    if (uiPlayer.player.paused && !nativeVideo.paused) {{
-                        nativeVideo.pause();
-                    }} else if (!uiPlayer.player.paused && nativeVideo.paused) {{
-                        nativeVideo.play();
+                    
+                    // Prevent MTProto concurrency timeout by loading native video ONLY AFTER Movi-Player is ready
+                    if (!nativeLoaded && uiPlayer.player.duration > 0) {{
+                        nativeLoaded = true;
+                        nativeVideo.src = streamUrl;
+                        nativeVideo.load();
                     }}
                     
-                    // Sync Timestamps (if drifting more than 0.3s)
-                    if (Math.abs(uiPlayer.player.currentTime - nativeVideo.currentTime) > 0.3) {{
-                        nativeVideo.currentTime = uiPlayer.player.currentTime;
+                    if (nativeLoaded) {{
+                        // Sync Play/Pause state (Movi-Player is the boss)
+                        if (uiPlayer.player.paused && !nativeVideo.paused) {{
+                            nativeVideo.pause();
+                        }} else if (!uiPlayer.player.paused && nativeVideo.paused) {{
+                            nativeVideo.play();
+                        }}
+                        
+                        // Sync Timestamps (if drifting more than 0.3s)
+                        if (Math.abs(uiPlayer.player.currentTime - nativeVideo.currentTime) > 0.3) {{
+                            nativeVideo.currentTime = uiPlayer.player.currentTime;
+                        }}
                     }}
                 }}
             }}, 200);
