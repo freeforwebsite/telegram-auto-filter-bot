@@ -66,7 +66,6 @@ class StreamServer:
     <title>Watch: {filename}</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
-    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
     <script type="module" src="https://cdn.jsdelivr.net/npm/movi-player@0.3.5/dist/element.js" crossorigin="anonymous"></script>
     <style>
         :root {{
@@ -402,12 +401,13 @@ class StreamServer:
                 </div>
             </div>
             
-            <div class="video-wrapper">
-                <video id="player" poster="/thumb/{file_id}" playsinline controls muted>
+            <div class="video-wrapper" style="position: relative; aspect-ratio: 16/9; background: #000; overflow: hidden;">
+                <!-- Native Video Engine (plays video, muted, no controls) -->
+                <video id="native-video" playsinline muted style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;">
                     <source src="/watch/{file_id}/{filename}" type="video/mp4" />
                 </video>
-                <!-- Hidden Movi-Player for WASM AC3 Audio Decoding -->
-                <movi-player id="audio-player" style="display: none;" src="/watch/{file_id}/{filename}"></movi-player>
+                <!-- Movi-Player (UI + Audio Engine) -->
+                <movi-player id="ui-player" src="/watch/{file_id}/{filename}" poster="/thumb/{file_id}" controls style="position: absolute; inset: 0; width: 100%; height: 100%; z-index: 10;"></movi-player>
             </div>
         </div>
 
@@ -446,49 +446,38 @@ class StreamServer:
     </div>
     </div>
 
-    <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {{
-            const player = new Plyr('#player', {{
-                controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
-                settings: ['captions', 'quality', 'speed'],
-                muted: true // Mute native video in case it does play audio, let WASM handle it
-            }});
-            
-            const audioPlayer = document.getElementById('audio-player');
-            
-            // Synchronize Playback
-            player.on('play', () => {{
-                if (typeof audioPlayer.play === 'function') audioPlayer.play();
-            }});
-            
-            player.on('pause', () => {{
-                if (typeof audioPlayer.pause === 'function') audioPlayer.pause();
-            }});
-            
-            player.on('seeking', () => {{
-                if (audioPlayer) audioPlayer.currentTime = player.currentTime;
-            }});
-            
-            player.on('seeked', () => {{
-                if (audioPlayer) audioPlayer.currentTime = player.currentTime;
-            }});
-            
-            player.on('waiting', () => {{
-                if (typeof audioPlayer.pause === 'function') audioPlayer.pause();
-            }});
-            
-            player.on('playing', () => {{
-                if (typeof audioPlayer.play === 'function') audioPlayer.play();
-            }});
-            
-            player.on('volumechange', () => {{
-                if (audioPlayer) {{
-                    audioPlayer.volume = player.volume;
-                    // Movi-player might not have a direct muted property, volume=0 works
-                    if (player.muted) audioPlayer.volume = 0;
+            const uiPlayer = document.getElementById('ui-player');
+            const nativeVideo = document.getElementById('native-video');
+
+            // Inject CSS to make Movi-Player's video rendering completely transparent
+            const injectStyle = setInterval(() => {{
+                if (uiPlayer.shadowRoot) {{
+                    const style = document.createElement('style');
+                    // Hide the canvas/video layer so the native video below is visible, but keep UI controls visible
+                    style.textContent = 'canvas, video {{ opacity: 0 !important; }} .movi-poster {{ display: none !important; }}';
+                    uiPlayer.shadowRoot.appendChild(style);
+                    clearInterval(injectStyle);
                 }}
-            }});
+            }}, 100);
+
+            // Strict synchronization loop
+            setInterval(() => {{
+                if (uiPlayer.player) {{
+                    // Sync Play/Pause state (Movi-Player is the boss)
+                    if (uiPlayer.player.paused && !nativeVideo.paused) {{
+                        nativeVideo.pause();
+                    }} else if (!uiPlayer.player.paused && nativeVideo.paused) {{
+                        nativeVideo.play();
+                    }}
+                    
+                    // Sync Timestamps (if drifting more than 0.3s)
+                    if (Math.abs(uiPlayer.player.currentTime - nativeVideo.currentTime) > 0.3) {{
+                        nativeVideo.currentTime = uiPlayer.player.currentTime;
+                    }}
+                }}
+            }}, 200);
         }});
         function getStreamUrl() {{
             return window.location.origin + "/watch/{file_id}/{filename}";
