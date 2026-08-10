@@ -353,18 +353,18 @@ class StreamServer:
             color: var(--text-muted);
             cursor: pointer;
             transition: all 0.2s;
-        }
+        }}
         
-        .btn-external i {
+        .btn-external i {{
             font-size: 20px;
             color: var(--text-main);
-        }
+        }}
         
-        .btn-external:hover {
+        .btn-external:hover {{
             background: rgba(255,255,255,0.08);
             border-color: rgba(255,255,255,0.2);
             color: var(--text-main);
-        }
+        }}
 
         /* Responsive */
         @media (max-width: 768px) {{
