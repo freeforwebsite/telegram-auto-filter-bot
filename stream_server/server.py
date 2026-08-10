@@ -509,6 +509,20 @@ class StreamServer:
             }}
         }}
         
+        function downloadM3U(url, filename) {{
+            const m3uContent = `#EXTM3U\n#EXTINF:-1,${{filename}}\n${{url}}`;
+            const blob = new Blob([m3uContent], {{ type: 'audio/mpegurl' }});
+            const blobUrl = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = `Play_in_VLC.m3u`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(blobUrl);
+        }}
+        
         function playInVLC() {{
             const fullUrl = getStreamUrl();
             const cleanUrl = fullUrl.replace(/^https?:\/\//, '');
@@ -521,12 +535,8 @@ class StreamServer:
                 // iOS Scheme
                 window.location.href = `vlc://${{fullUrl}}`;
             }} else {{
-                // Desktop / PC (Browsers block launching local apps)
-                navigator.clipboard.writeText(fullUrl).then(() => {{
-                    alert('Stream link copied to your clipboard! 📋\\n\\nTo watch with Audio Tracks on PC:\\n1. Open VLC Player\\n2. Press Ctrl + N (Media -> Open Network Stream)\\n3. Paste the link and click Play!');
-                }}).catch(() => {{
-                    alert('Please copy this link and paste it into VLC (Media -> Open Network Stream):\\n\\n' + fullUrl);
-                }});
+                // Desktop / PC - Download M3U playlist file to auto-launch VLC
+                downloadM3U(fullUrl, "{filename}");
             }}
         }}
     </script>
