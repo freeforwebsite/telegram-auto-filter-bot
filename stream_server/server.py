@@ -2,6 +2,7 @@ import os
 import re
 import math
 import logging
+import mimetypes
 from aiohttp import web
 from pyrogram import Client
 
@@ -551,8 +552,9 @@ class StreamServer:
                 
             length = (end - offset + 1) if end else 0
             
-            # For direct stream links, assume MP4 to trigger hardware decoders
-            mime_type = 'video/mp4'
+            # Determine correct mime type so browsers properly demux MKV audio (AAC)
+            mime_type, _ = mimetypes.guess_type(filename)
+            mime_type = mime_type or 'video/mp4'
                 
             headers = {
                 'Content-Type': mime_type,
