@@ -67,7 +67,7 @@ class StreamServer:
     <title>Watch: {filename}</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
-    <script src="https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/movi-player@0.3.5/dist/element.js" crossorigin="anonymous"></script>
     <style>
         :root {{
             --bg-deep: #0D0D14;
@@ -246,16 +246,9 @@ class StreamServer:
             position: relative;
         }}
         
-        .artplayer-app {{
-            width: 100%;
-            aspect-ratio: 16/9;
-            max-height: 70vh;
-        }}
-        
         /* Mobile adjustments for player */
         @media (max-width: 768px) {{
-            .artplayer-app {{
-                aspect-ratio: auto;
+            .video-wrapper {{
                 height: 250px;
             }}
         }}
@@ -409,8 +402,12 @@ class StreamServer:
                 </div>
             </div>
             
-            <div class="video-wrapper">
-                <div class="artplayer-app"></div>
+            <div class="video-wrapper" style="position: relative; aspect-ratio: 16/9; background: #000; overflow: hidden;">
+                <!-- Native Video Engine (plays video, muted, no controls) -->
+                <video id="native-video" playsinline muted preload="none" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;">
+                </video>
+                <!-- Movi-Player (UI + Audio Engine) -->
+                <movi-player id="ui-player" src="/watch/{file_id}/{filename}" poster="/thumb/{file_id}" controls style="position: absolute; inset: 0; width: 100%; height: 100%; z-index: 10;"></movi-player>
             </div>
         </div>
 
@@ -451,49 +448,49 @@ class StreamServer:
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {{
-            
-            // Initialize ArtPlayer (matches the UI you requested)
-            const art = new Artplayer({{
-                container: '.artplayer-app',
-                url: '/watch/{file_id}/{filename}',
-                poster: '/thumb/{file_id}',
-                theme: '#e83e8c', // Pink/Purple theme
-                volume: 1,
-                muted: false, // Ensure native audio is enabled
-                autoplay: false,
-                pip: true,
-                autoSize: true,
-                autoMini: true,
-                setting: true,
-                loop: false,
-                flip: true,
-                playbackRate: true,
-                aspectRatio: true,
-                fullscreen: true,
-                fullscreenWeb: true,
-                subtitleOffset: false,
-                miniProgressBar: true,
-                mutex: true,
-                backdrop: true,
-                playsInline: true,
-                autoPlayback: true,
-                airplay: true,
-                fastForward: true,
-                layers: [
-                    {{
-                        html: '<div style="position: absolute; top: 15px; left: 15px; background: rgba(16, 185, 129, 0.15); padding: 4px 12px; border-radius: 100px; display: flex; align-items: center; gap: 6px; color: #10B981; font-weight: 600; font-size: 11px; border: 1px solid rgba(16, 185, 129, 0.2); backdrop-filter: blur(4px);"><div style="width: 5px; height: 5px; background: #10B981; border-radius: 50%; box-shadow: 0 0 8px #10B981;"></div> LIVE STREAM</div>',
-                        name: 'liveIndicator',
-                        style: {{
-                            position: 'absolute',
-                            top: '0',
-                            left: '0',
-                            width: '100%',
-                            height: '100%',
-                            pointerEvents: 'none'
+            const uiPlayer = document.getElementById('ui-player');
+            const nativeVideo = document.getElementById('native-video');
+
+            // Inject CSS to make Movi-Player's video rendering completely transparent
+            const injectStyle = setInterval(() => {{
+                if (uiPlayer.shadowRoot) {{
+                    const style = document.createElement('style');
+                    // Hide the canvas/video layer so the native video below is visible, but keep UI controls visible
+                    style.textContent = 'canvas, video {{ opacity: 0 !important; }} .movi-poster {{ display: none !important; }}';
+                    uiPlayer.shadowRoot.appendChild(style);
+                    clearInterval(injectStyle);
+                }}
+            }}, 100);
+
+            const streamUrl = "/watch/{file_id}/{filename}";
+            let nativeLoaded = false;
+
+            // Strict synchronization loop
+            setInterval(() => {{
+                if (uiPlayer.player) {{
+                    
+                    // Prevent MTProto concurrency timeout by loading native video ONLY AFTER Movi-Player is ready
+                    if (!nativeLoaded && uiPlayer.player.duration > 0) {{
+                        nativeLoaded = true;
+                        nativeVideo.src = streamUrl;
+                        nativeVideo.load();
+                    }}
+                    
+                    if (nativeLoaded) {{
+                        // Sync Play/Pause state (Movi-Player is the boss)
+                        if (uiPlayer.player.paused && !nativeVideo.paused) {{
+                            nativeVideo.pause();
+                        }} else if (!uiPlayer.player.paused && nativeVideo.paused) {{
+                            nativeVideo.play();
+                        }}
+                        
+                        // Sync Timestamps (if drifting more than 0.3s)
+                        if (Math.abs(uiPlayer.player.currentTime - nativeVideo.currentTime) > 0.3) {{
+                            nativeVideo.currentTime = uiPlayer.player.currentTime;
                         }}
                     }}
-                ]
-            }});
+                }}
+            }}, 200);
         }});
         function getStreamUrl() {{
             return window.location.origin + "/watch/{file_id}/{filename}";
