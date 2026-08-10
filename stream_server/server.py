@@ -67,6 +67,7 @@ class StreamServer:
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
     <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+    <script type="module" src="https://cdn.jsdelivr.net/npm/movi-player@0.3.5/dist/element.js" crossorigin="anonymous"></script>
     <style>
         :root {{
             --bg-deep: #0D0D14;
@@ -402,9 +403,11 @@ class StreamServer:
             </div>
             
             <div class="video-wrapper">
-                <video id="player" poster="/thumb/{file_id}" playsinline controls>
+                <video id="player" poster="/thumb/{file_id}" playsinline controls muted>
                     <source src="/watch/{file_id}/{filename}" type="video/mp4" />
                 </video>
+                <!-- Hidden Movi-Player for WASM AC3 Audio Decoding -->
+                <movi-player id="audio-player" style="display: none;" src="/watch/{file_id}/{filename}"></movi-player>
             </div>
         </div>
 
@@ -448,7 +451,43 @@ class StreamServer:
         document.addEventListener('DOMContentLoaded', () => {{
             const player = new Plyr('#player', {{
                 controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
-                settings: ['captions', 'quality', 'speed']
+                settings: ['captions', 'quality', 'speed'],
+                muted: true // Mute native video in case it does play audio, let WASM handle it
+            }});
+            
+            const audioPlayer = document.getElementById('audio-player');
+            
+            // Synchronize Playback
+            player.on('play', () => {{
+                if (typeof audioPlayer.play === 'function') audioPlayer.play();
+            }});
+            
+            player.on('pause', () => {{
+                if (typeof audioPlayer.pause === 'function') audioPlayer.pause();
+            }});
+            
+            player.on('seeking', () => {{
+                if (audioPlayer) audioPlayer.currentTime = player.currentTime;
+            }});
+            
+            player.on('seeked', () => {{
+                if (audioPlayer) audioPlayer.currentTime = player.currentTime;
+            }});
+            
+            player.on('waiting', () => {{
+                if (typeof audioPlayer.pause === 'function') audioPlayer.pause();
+            }});
+            
+            player.on('playing', () => {{
+                if (typeof audioPlayer.play === 'function') audioPlayer.play();
+            }});
+            
+            player.on('volumechange', () => {{
+                if (audioPlayer) {{
+                    audioPlayer.volume = player.volume;
+                    // Movi-player might not have a direct muted property, volume=0 works
+                    if (player.muted) audioPlayer.volume = 0;
+                }}
             }});
         }});
         function getStreamUrl() {{
