@@ -1147,11 +1147,9 @@ function closeToast() {{ document.getElementById('toast').classList.remove('show
             
             # Determine correct mime type so browsers properly demux MKV audio (AAC)
             fake_mp4 = request.query.get('fake_mp4')
-            if fake_mp4 == 'true':
+            if fake_mp4 == 'true' or filename.lower().endswith('.mkv'):
+                # Force mp4 for mkv files to allow Chrome to sniff and demux AAC audio properly
                 mime_type = 'video/mp4'
-            elif filename.lower().endswith('.mkv'):
-                # Force webm for mkv files to trigger Chrome's Matroska demuxer for audio/video
-                mime_type = 'video/webm'
             else:
                 mime_type, _ = mimetypes.guess_type(filename)
                 mime_type = mime_type or 'video/mp4'
