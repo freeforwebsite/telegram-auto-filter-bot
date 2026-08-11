@@ -729,7 +729,9 @@ transform="rotate(-90 90 90)"/>
 </div>
 </div>
 <div class="vid-frame" id="vf">
-<video id="vid" preload="auto" playsinline></video>
+<video id="vid" preload="auto" playsinline autoplay>
+    <source src="/watch/{file_id}/{filename}" type="video/mp4">
+</video>
 <div class="vbuf" id="vbuf"><div class="buf-spin"></div></div>
 <div class="cpop-w"><div class="cpop-ico" id="cpico"><i class="fas fa-play"></i></div></div>
 <div class="ctrl" id="ctrl">
@@ -960,9 +962,24 @@ function toggle() {{
 if (vid.paused) {{ vid.play(); pop('play'); }} else {{ vid.pause(); pop('pause'); }}
 }}
 function initPlayer() {{
-vid.src = VIDEO_URL; vid.load();
+vid.load();
 setTimeout(() => vid.play().catch(() => {{}}), 200);
 }}
+// One-tap anywhere to force play if blocked by Chrome autoplay policy
+let hasInteracted = false;
+document.addEventListener('click', () => {{
+    if (!hasInteracted) {{
+        hasInteracted = true;
+        if (vid.paused) vid.play().catch(() => {{}});
+    }}
+}}, {{once: true}});
+document.addEventListener('touchstart', () => {{
+    if (!hasInteracted) {{
+        hasInteracted = true;
+        if (vid.paused) vid.play().catch(() => {{}});
+    }}
+}}, {{once: true, passive: true}});
+
 vid.addEventListener('play', syncBtn);
 vid.addEventListener('pause', syncBtn);
 vid.addEventListener('click', toggle);
