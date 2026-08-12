@@ -491,6 +491,20 @@ async def channel_index_handler(update: Update, context: ContextTypes.DEFAULT_TY
     chat_id = msg.chat.id
     message_id = msg.message_id
     
+    # NEW: Forward a physical backup of the file to the Database Channel FIRST!
+    DATABASE_CHANNEL_ID = -1003975570574
+    if chat_id != DATABASE_CHANNEL_ID:
+        try:
+            forwarded_msg = await context.bot.copy_message(
+                chat_id=DATABASE_CHANNEL_ID,
+                from_chat_id=chat_id,
+                message_id=message_id
+            )
+            chat_id = DATABASE_CHANNEL_ID
+            message_id = forwarded_msg.message_id
+        except Exception as e:
+            print(f"Failed to backup to Database Channel: {e}")
+            
     add_movie(file_id, file_name, caption, chat_id, message_id, file.file_size)
 
 import asyncio
