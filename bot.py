@@ -32,6 +32,10 @@ if MONGODB_URI:
         client = pymongo.MongoClient(MONGODB_URI)
         db = client['telegram_bot']
         movies_collection = db['movies']
+        
+        # Connect to Cinescraper's database
+        scrape_db = client['cinesearch_db']
+        scrape_queue = scrape_db['scrape_queue']
     except Exception as e:
         print(f"MongoDB Connection Error: {e}")
 
@@ -315,14 +319,29 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     results = search_movies(query)
     
     if not results:
+        # Auto-Queue the missing movie to Cinescraper
+        try:
+            if scrape_queue is not None:
+                import datetime
+                import re
+                clean_query = query.strip()
+                scrape_queue.update_one(
+                    {"movie_name": {"$regex": f"^{re.escape(clean_query)}$", "$options": "i"}},
+                    {"$setOnInsert": {
+                        "movie_name": clean_query, 
+                        "status": "pending", 
+                        "added_on": datetime.datetime.utcnow()
+                    }},
+                    upsert=True
+                )
+        except Exception as e:
+            print(f"Failed to auto-queue {query}: {e}")
+
         not_found_text = (
             f"❌ **Movie Not Found!**\n\n"
             f"I couldn't find anything matching: `{query}`\n\n"
-            "💡 **Search Tips:**\n"
-            "• Check your spelling carefully!\n"
-            "• **Movie:** `Jawan` or `Jawan 2023`\n"
-            "• **Series:** `Loki S01` or `Loki S01E04`\n"
-            "• **Don't use:** `: ! ( ) , . /`"
+            "🤖 **Wait! I have automatically requested our AI Scraper to find this for you!**\n"
+            "Please wait a few hours and try searching again!"
         )
         google_url = f"https://www.google.com/search?q={urllib.parse.quote(query)}"
         keyboard = [[InlineKeyboardButton("🔍 DO GOOGLE", url=google_url)]]
