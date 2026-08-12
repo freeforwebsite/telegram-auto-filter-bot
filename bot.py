@@ -69,8 +69,14 @@ import urllib.parse
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 def get_watch_keyboard(movie):
-    render_url = os.environ.get('RENDER_EXTERNAL_URL', 'http://localhost:10000')
-    watch_url = f"{render_url}/player/{movie['file_id']}/{urllib.parse.quote(movie['file_name'])}"
+    render_url = os.environ.get('RENDER_EXTERNAL_URL', 'https://t.me/MoviiWrld')
+    
+    # If the URL is just the telegram channel (local mode), don't build a complex path
+    if render_url == 'https://t.me/MoviiWrld':
+        watch_url = render_url
+    else:
+        watch_url = f"{render_url}/player/{movie['file_id']}/{urllib.parse.quote(movie['file_name'])}"
+        
     return InlineKeyboardMarkup([[InlineKeyboardButton("▶️ Watch Online", url=watch_url)]])
 
 def normalize_text(text):
@@ -854,7 +860,7 @@ def main():
     # Handle inline buttons
     application.add_handler(CallbackQueryHandler(button_callback))
     
-    application.run_polling()
+    application.run_polling(drop_pending_updates=True)
 
 import asyncio
 import sys
