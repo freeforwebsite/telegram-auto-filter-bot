@@ -333,11 +333,15 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 clean_query = query.strip()
                 scrape_queue.update_one(
                     {"movie_name": {"$regex": f"^{re.escape(clean_query)}$", "$options": "i"}},
-                    {"$setOnInsert": {
-                        "movie_name": clean_query, 
-                        "status": "pending", 
-                        "added_on": datetime.datetime.utcnow()
-                    }},
+                    {
+                        "$setOnInsert": {
+                            "movie_name": clean_query, 
+                            "status": "pending",
+                            "is_urgent": True,
+                            "added_on": datetime.datetime.utcnow()
+                        },
+                        "$addToSet": {"requested_by": update.effective_chat.id}
+                    },
                     upsert=True
                 )
         except Exception as e:
@@ -822,6 +826,33 @@ import pytz
 from tmdb_enricher import start_enricher
 import threading
 
+async def notify_users_job(context: ContextTypes.DEFAULT_TYPE):
+    if scrape_queue is None:
+        return
+        
+    try:
+        completed_movies = scrape_queue.find({"status": "completed", "is_urgent": True, "notified": {"$ne": True}})
+        for movie in completed_movies:
+            movie_name = movie.get("movie_name", "Unknown")
+            users = movie.get("requested_by", [])
+            
+            for user_id in users:
+                try:
+                    await context.bot.send_message(
+                        chat_id=user_id,
+                        text=f"🎉 **Good News!**\n\nThe movie **{movie_name}** you requested is now available!\nClick the button below to get it.",
+                        reply_markup=InlineKeyboardMarkup([[
+                            InlineKeyboardButton("🔍 Search Now", switch_inline_query_current_chat=movie_name)
+                        ]]),
+                        parse_mode="Markdown"
+                    )
+                except Exception as e:
+                    print(f"Failed to notify user {user_id}: {e}")
+                    
+            scrape_queue.delete_one({"_id": movie["_id"]})
+    except Exception as e:
+        print(f"Error in notify_users_job: {e}")
+
 def main():
     threading.Thread(target=start_enricher, daemon=True).start()
     
@@ -832,6 +863,7 @@ def main():
     target_time = datetime.time(hour=4, minute=0, tzinfo=ist)
     try:
         application.job_queue.run_daily(send_daily_welcome, time=target_time)
+        application.job_queue.run_repeating(notify_users_job, interval=30)
     except AttributeError:
         print("Warning: JobQueue is not installed properly. Daily welcome messages are disabled.")
     except Exception as e:
