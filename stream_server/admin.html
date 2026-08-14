@@ -462,10 +462,12 @@
             setTimeout(() => toast.classList.remove("show"), 3000);
         }
 
+        let allPublishedMovies = [];
         
         async function loadPublisherPage() {
             const res = await fetch(API_URL + "/published");
             const data = await res.json();
+            allPublishedMovies = data;
             const tbody = document.getElementById("publisher-table-body");
             tbody.innerHTML = "";
             
@@ -488,6 +490,7 @@
                                    "<td><div class='movie-name'>" + movie.title + "</div>" + categoryHtml + "</td>" + 
                                    "<td>" + linksHtml + "</td>" + 
                                    "<td style='text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end; align-items: center; height: 100px;'>" + 
+                                   "<button style='padding: 0.25rem 0.5rem; font-size: 0.75rem; background: var(--primary); border: none; color: white; border-radius: 4px; cursor: pointer;' onclick='editPublished(\"" + movie._id + "\")'>Edit</button>" +
                                    "<button class='btn-danger' style='padding: 0.25rem 0.5rem; font-size: 0.75rem;' onclick='deletePublished(\"" + movie._id + "\")'>Delete</button>" + 
                                    "</td>";
                     tbody.appendChild(tr);
@@ -496,6 +499,7 @@
         }
 
         function openPublishModal() {
+            document.getElementById('modal-title').innerText = 'Publish Movie';
             document.getElementById('pub-id').value = '';
             document.getElementById('pub-title').value = '';
             document.getElementById('pub-poster').value = '';
@@ -508,6 +512,27 @@
         
         function closePublishModal() {
             document.getElementById('publish-modal').style.display = 'none';
+        }
+        
+        function editPublished(id) {
+            const movie = allPublishedMovies.find(m => m._id === id);
+            if (!movie) return;
+            
+            document.getElementById('modal-title').innerText = 'Edit Published Item';
+            document.getElementById('pub-id').value = movie._id;
+            document.getElementById('pub-title').value = movie.title || '';
+            document.getElementById('pub-poster').value = movie.poster || '';
+            document.getElementById('pub-category').value = movie.category || 'All';
+            document.getElementById('pub-desc').value = movie.description || '';
+            
+            document.getElementById('pub-links-container').innerHTML = '';
+            if (movie.links && movie.links.length > 0) {
+                movie.links.forEach(l => addLinkRow(l.quality, l.file_id, l.season || '', l.episode || ''));
+            } else {
+                addLinkRow();
+            }
+            
+            document.getElementById('publish-modal').style.display = 'flex';
         }
         
         function addLinkRow(quality = '1080p', file_id = '', season = '', episode = '') {
