@@ -63,6 +63,7 @@ class StreamServer:
         self.app.router.add_post('/api/queue/clear_all', self.api_clear_all)
         self.app.router.add_get('/watch/{file_id}/{filename}', self.stream_handler)
         self.app.router.add_get('/player/{file_id}/{filename}', self.player_page)
+        app.router.add_get('/embed/{file_id}/{filename}', self.embed_player)
         self.app.router.add_get('/thumb/{file_id}', self.thumb_handler)
 
     def check_admin(self, request):
@@ -1080,6 +1081,425 @@ const el = document.getElementById(id);
 el.className = 'cd-step ' + cls;
 }}
 /* ─── PLAYER ─── */
+const vid = document.getElementById('vid');
+const vf = document.getElementById('vf');
+const pbtn = document.getElementById('pbtn');
+const bbtn = document.getElementById('bbtn');
+const fbtn = document.getElementById('fbtn');
+const mbtn = document.getElementById('mbtn');
+const volr = document.getElementById('volr');
+const tdisp = document.getElementById('tdisp');
+const seekbar= document.getElementById('seekbar');
+const sbbuf = document.getElementById('sbbuf');
+const sbp = document.getElementById('sbp');
+const sbth = document.getElementById('sbth');
+const sbtip = document.getElementById('sbtip');
+const spdbtn = document.getElementById('spdbtn');
+const spop = document.getElementById('spop');
+const pipbtn = document.getElementById('pipbtn');
+const fsbtn = document.getElementById('fsbtn');
+const vbuf = document.getElementById('vbuf');
+const cpico = document.getElementById('cpico');
+function fmt(s) {{
+if (!s || isNaN(s)) return '0:00';
+return `${{Math.floor(s/60)}}:${{String(Math.floor(s%60)).padStart(2,'0')}}`;
+}}
+function syncBtn() {{
+pbtn.innerHTML = vid.paused ? '<i class="fas fa-play"></i>' : '<i class="fas fa-pause"></i>';
+}}
+function pop(t) {{
+cpico.innerHTML = `<i class="fas fa-${{t==='play'?'play':'pause'}}"></i>`;
+cpico.classList.remove('go'); void cpico.offsetWidth; cpico.classList.add('go');
+}}
+function toggle() {{
+if (vid.paused) {{ vid.play(); pop('play'); }} else {{ vid.pause(); pop('pause'); }}
+}}
+function initPlayer() {{
+vid.load();
+setTimeout(() => vid.play().catch(() => {{}}), 200);
+}}
+// One-tap anywhere to force play if blocked by Chrome autoplay policy
+let hasInteracted = false;
+document.addEventListener('click', () => {{
+    if (!hasInteracted) {{
+        hasInteracted = true;
+        if (vid.paused) vid.play().catch(() => {{}});
+    }}
+}}, {{once: true}});
+document.addEventListener('touchstart', () => {{
+    if (!hasInteracted) {{
+        hasInteracted = true;
+        if (vid.paused) vid.play().catch(() => {{}});
+    }}
+}}, {{once: true, passive: true}});
+
+vid.addEventListener('play', syncBtn);
+vid.addEventListener('pause', syncBtn);
+vid.addEventListener('click', toggle);
+pbtn.addEventListener('click', e => {{ e.stopPropagation(); toggle(); }});
+bbtn.addEventListener('click', e => {{ e.stopPropagation(); vid.currentTime -= 10; }});
+fbtn.addEventListener('click', e => {{ e.stopPropagation(); vid.currentTime += 10; }});
+vid.addEventListener('timeupdate', () => {{
+const p = vid.duration ? vid.currentTime / vid.duration * 100 : 0;
+sbp.style.width = p + '%'; sbth.style.left = p + '%';
+tdisp.textContent = fmt(vid.currentTime) + ' / ' + fmt(vid.duration);
+}});
+vid.addEventListener('progress', () => {{
+if (vid.buffered.length && vid.duration)
+sbbuf.style.width = (vid.buffered.end(vid.buffered.length-1) / vid.duration * 100) + '%';
+}});
+vid.addEventListener('loadedmetadata', () => {{
+document.getElementById('dur-tag').innerHTML = `<i class="fas fa-clock"></i> ${{fmt(vid.duration)}}`;
+}});
+vid.addEventListener('waiting', () => vbuf.classList.add('on'));
+vid.addEventListener('playing', () => vbuf.classList.remove('on'));
+vid.addEventListener('canplay', () => vbuf.classList.remove('on'));
+/* Seek */
+let drag = false;
+function seekTo(e) {{
+const r = seekbar.getBoundingClientRect();
+const x = Math.max(0, Math.min((e.touches?.[0]?.clientX ?? e.clientX) - r.left, r.width));
+if (vid.duration) vid.currentTime = x / r.width * vid.duration;
+}}
+seekbar.addEventListener('mousedown', e => {{ drag=true; seekTo(e); }});
+document.addEventListener('mousemove', e => {{ if(drag) seekTo(e); }});
+document.addEventListener('mouseup', () => drag=false);
+seekbar.addEventListener('touchstart', e => {{ drag=true; seekTo(e); }}, {{passive:true}});
+document.addEventListener('touchmove', e => {{ if(drag) seekTo(e); }}, {{passive:true}});
+document.addEventListener('touchend', () => drag=false);
+seekbar.addEventListener('mousemove', e => {{
+const r = seekbar.getBoundingClientRect();
+const x = Math.max(0, Math.min(e.clientX - r.left, r.width));
+sbtip.textContent = fmt(x / r.width * (vid.duration||0));
+sbtip.style.left = (x / r.width * 100) + '%';
+}});
+/* Volume */
+mbtn.addEventListener('click', e => {{
+e.stopPropagation(); vid.muted = !vid.muted;
+mbtn.innerHTML = vid.muted ? '<i class="fas fa-volume-xmark"></i>' : '<i class="fas fa-volume-high"></i>';
+}});
+volr.addEventListener('input', e => {{
+e.stopPropagation(); vid.volume = volr.value; vid.muted = vid.volume === 0;
+mbtn.innerHTML = (vid.volume===0||vid.muted) ? '<i class="fas fa-volume-xmark"></i>' : '<i class="fas fa-volume-high"></i>';
+}});
+/* Speed */
+spdbtn.addEventListener('click', e => {{ e.stopPropagation(); spop.classList.toggle('on'); }});
+spop.querySelectorAll('.si').forEach(el => {{
+el.addEventListener('click', e => {{
+e.stopPropagation();
+vid.playbackRate = parseFloat(el.dataset.s);
+spdbtn.textContent = el.dataset.s + '×';
+spop.querySelectorAll('.si').forEach(i => i.classList.remove('sel'));
+el.classList.add('sel'); spop.classList.remove('on');
+}});
+}});
+document.addEventListener('click', () => spop.classList.remove('on'));
+/* PiP */
+pipbtn.addEventListener('click', async e => {{
+e.stopPropagation();
+try {{ document.pictureInPictureElement ? await document.exitPictureInPicture() : await vid.requestPictureInPicture(); }}
+catch(_) {{}}
+}});
+/* Fullscreen */
+fsbtn.addEventListener('click', e => {{
+e.stopPropagation();
+if (!document.fullscreenElement) {{
+(vf.requestFullscreen || vf.webkitRequestFullscreen).call(vf);
+fsbtn.innerHTML = '<i class="fas fa-compress"></i>';
+}} else {{
+(document.exitFullscreen || document.webkitExitFullscreen).call(document);
+}}
+}});
+document.addEventListener('fullscreenchange', () => {{
+if (!document.fullscreenElement) fsbtn.innerHTML = '<i class="fas fa-expand"></i>';
+}});
+/* Keyboard */
+document.addEventListener('keydown', e => {{
+if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+switch(e.code) {{
+case 'Space': e.preventDefault(); toggle(); break;
+case 'ArrowLeft': vid.currentTime -= 5; break;
+case 'ArrowRight': vid.currentTime += 5; break;
+case 'ArrowUp': vid.volume = Math.min(1,vid.volume+.1); volr.value=vid.volume; break;
+case 'ArrowDown': vid.volume = Math.max(0,vid.volume-.1); volr.value=vid.volume; break;
+case 'KeyM': mbtn.click(); break;
+case 'KeyF': fsbtn.click(); break;
+}}
+}});
+/* Auto-hide controls */
+let ht;
+function rh() {{
+vf.classList.remove('hc'); clearTimeout(ht);
+if (!vid.paused) ht = setTimeout(() => vf.classList.add('hc'), 3000);
+}}
+vf.addEventListener('mousemove', rh);
+vf.addEventListener('touchstart', rh, {{passive:true}});
+vid.addEventListener('play', () => {{ ht = setTimeout(() => vf.classList.add('hc'), 3000); }});
+vid.addEventListener('pause', () => {{ vf.classList.remove('hc'); clearTimeout(ht); }});
+/* ─── EXTERNAL PLAYERS ─── */
+const APPS = {{
+vlc: {{ ico:'🎬', bg:'rgba(255,140,0,.15)', t:'Opening VLC Player…', s:'VLC supports HEVC/H.265 & all audio codecs. Get it at videolan.org', u: x=>`vlc://${{x}}` }},
+mx: {{ ico:'▶️', bg:'rgba(25,118,210,.15)', t:'Opening MX Player…', s:'MX Player supports multi-audio tracks & hardware decoding.', u: x=>`intent:${{x}}#Intent;package=com.mxtech.videoplayer.ad;end` }},
+playit: {{ ico:'▶', bg:'rgba(0,184,148,.15)', t:'Opening PlayIt Player…', s:'PlayIt provides fast hardware-accelerated smooth playback.', u: x=>`intent:${{x}}#Intent;package=com.playit.videoplayer;end` }}
+}};
+function openIn(app) {{
+const c = APPS[app];
+window.location.href = c.u(encodeURIComponent(window.location.origin + VIDEO_URL));
+document.getElementById('t-ico').textContent = c.ico;
+document.getElementById('t-ico-wrap').style.background = c.bg;
+document.getElementById('t-title').textContent = c.t;
+document.getElementById('t-sub').textContent = c.s;
+const t = document.getElementById('toast');
+t.classList.add('show');
+clearTimeout(window._tt);
+window._tt = setTimeout(() => t.classList.remove('show'), 7000);
+}}
+function closeToast() {{ document.getElementById('toast').classList.remove('show'); }}
+</script>
+</body>
+</html>
+"""
+        headers = {
+            'Cross-Origin-Opener-Policy': 'same-origin',
+            'Cross-Origin-Embedder-Policy': 'require-corp'
+        }
+        return web.Response(text=html_content, content_type='text/html', headers=headers)
+
+    async def stream_handler(self, request):
+        file_id = request.match_info['file_id']
+        filename = request.match_info['filename']
+        
+        try:
+            # 1. Look up the movie in MongoDB to get source_chat_id and source_message_id
+            movie = await movies_col.find_one({'file_id': file_id})
+            if not movie:
+                return web.Response(status=404, text="Movie not found in database")
+                
+            # 2. Extract file_size from DB (if we start saving it), or fallback to chunked stream
+            file_size = movie.get('file_size')
+            
+            # If file_size is missing (older movies), try to fetch it from the original message!
+            if not file_size and movie.get('source_chat_id') and movie.get('source_message_id'):
+                try:
+                    msg = await self.client.get_messages(movie['source_chat_id'], movie['source_message_id'])
+                    if msg:
+                        if msg.video:
+                            file_size = msg.video.file_size
+                        elif msg.document:
+                            file_size = msg.document.file_size
+                        
+                        # Save it back to db so we don't have to fetch it next time
+                        if file_size:
+                            await movies_col.update_one({'_id': movie['_id']}, {'$set': {'file_size': file_size}})
+                except Exception:
+                    pass
+            
+            # We don't need to fetch the message via get_messages! 
+            # Pyrogram can stream directly from the file_id string!
+            # This completely bypasses the "Peer id invalid" error for private channels!
+            
+            # 3. Handle Range Requests
+            range_header = request.headers.get('Range', 0)
+            
+            if range_header and file_size:
+                match = re.search(r'bytes=(\d+)-(\d*)', range_header)
+                if match:
+                    offset = int(match.group(1))
+                    end = int(match.group(2)) if match.group(2) else file_size - 1
+                else:
+                    offset = 0
+                    end = file_size - 1
+            else:
+                offset = 0
+                end = file_size - 1 if file_size else None
+                
+            length = (end - offset + 1) if end else 0
+            
+            # Determine correct mime type so browsers properly demux MKV audio (AAC)
+            fake_mp4 = request.query.get('fake_mp4')
+            if fake_mp4 == 'true' or filename.lower().endswith('.mkv'):
+                # Force mp4 for mkv files to allow Chrome to sniff and demux AAC audio properly
+                mime_type = 'video/mp4'
+            else:
+                mime_type, _ = mimetypes.guess_type(filename)
+                mime_type = mime_type or 'video/mp4'
+                
+            headers = {
+                'Content-Type': mime_type,
+                'Accept-Ranges': 'bytes',
+                'Content-Disposition': f'inline; filename="{filename}"',
+                'Cross-Origin-Resource-Policy': 'cross-origin'
+            }
+            
+            if file_size:
+                headers['Content-Range'] = f'bytes {offset}-{end}/{file_size}'
+                headers['Content-Length'] = str(length)
+            
+            response = web.StreamResponse(
+                status=206 if (range_header and file_size) else 200,
+                headers=headers
+            )
+            await response.prepare(request)
+            
+            # Pyrogram's stream_media uses chunk offsets, typically 1MB per chunk
+            chunk_size = 1024 * 1024
+            chunk_index = offset // chunk_size
+            skip_bytes = offset % chunk_size
+            bytes_left = length if length > 0 else float('inf')
+            
+            # Stream from Pyrogram starting at the precise chunk index
+            async for chunk in self.client.stream_media(file_id, offset=chunk_index):
+                if skip_bytes > 0:
+                    chunk = chunk[skip_bytes:]
+                    skip_bytes = 0
+                    
+                if bytes_left <= len(chunk):
+                    try:
+                        await response.write(chunk[:bytes_left])
+                    except Exception:
+                        pass
+                    break
+                    
+                try:
+                    await response.write(chunk)
+                except Exception:
+                    # Client disconnected
+                    break
+                    
+                bytes_left -= len(chunk)
+                
+            return response
+            
+        except Exception as e:
+            import traceback
+            tb = traceback.format_exc()
+            logger.error(f"Stream Error:\n{tb}")
+            return web.Response(status=500, text=f"Streaming Failed!\n\nReason: {e}\n\nTraceback:\n{tb}")
+
+
+    
+
+async def embed_player(self, request):
+        file_id = request.match_info['file_id']
+        filename = request.match_info['filename']
+        
+        # We will load the sleek HTML player here
+        html_content = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LoveToRide · {filename}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+*,*::before,*::after{{box-sizing:border-box;margin:0;padding:0}}
+html{{scroll-behavior:smooth}}
+:root{{
+--bg:#0B0F1E;
+--card:#131929;
+--card2:#1A2238;
+--card3:#1F2940;
+--purple:#7B5CF5;
+--purple2:#9B7DFF;
+--pink:#F0507E;
+--pink2:#FF6B9D;
+--blue:#4E9BFF;
+--blue2:#72B4FF;
+--teal:#00D4AA;
+--teal2:#00F5C4;
+--orange:#FF8C42;
+--yellow:#FFD166;
+--white:#FFFFFF;
+--text:#E8EEFF;
+--text2:#9BA3BC;
+--text3:#6B7490;
+--border:rgba(255,255,255,0.07);
+--border2:rgba(255,255,255,0.12);
+--glow-purple:rgba(123,92,245,0.4);
+--glow-pink:rgba(240,80,126,0.4);
+--glow-teal:rgba(0,212,170,0.3);
+}}
+body{{
+font-family:'Nunito',sans-serif;
+background:var(--bg);
+color:var(--text);
+min-height:100vh;
+overflow-x:hidden;
+}}
+/* ─── ANIMATED BG ─── */
+.bg-wrap{{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}}
+.bg-glow{{
+position:absolute;border-radius:50%;filter:blur(120px);opacity:.25;
+animation:bgFloat 15s ease-in-out infinite alternate;
+}}
+.bg-glow.g1{{width:700px;height:700px;background:var(--purple);top:-200px;left:-200px;animation-duration:18s}}
+.bg-glow.g2{{width:600px;height:600px;background:var(--pink);bottom:-150px;right:-100px;animation-duration:22s;animation-direction:alternate-reverse}}
+.bg-glow.g3{{width:400px;height:400px;background:var(--blue);top:40%;left:50%;animation-duration:14s}}
+@keyframes bgFloat{{
+0%{{transform:translate(0,0) scale(1)}}
+100%{{transform:translate(50px,-50px) scale(1.15)}}
+}}
+/* Subtle grid */
+.bg-grid{{
+position:absolute;inset:0;
+background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
+linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+background-size:40px 40px;
+}}
+/* ─── LAYOUT ─── */
+.page{{position:relative;z-index:1;max-width:960px;margin:0 auto;padding:0 16px 60px}}
+/* ─── NAVBAR ─── */
+nav{{
+display:flex;align-items:center;justify-content:space-between;
+padding:18px 0 16px;
+border-bottom:1px solid var(--border);
+margin-bottom:32px;
+}}
+.nav-logo{{
+display:flex;align-items:center;gap:10px;
+}}
+.logo-icon{{
+width:38px;height:38px;border-radius:12px;
+background:linear-gradient(135deg,var(--purple),var(--pink));
+display:flex;align-items:center;justify-content:center;
+font-size:18px;
+box-shadow:0 4px 20px var(--glow-purple);
+}}
+.logo-name{{
+font-family:'Poppins',sans-serif;
+font-size:20px;font-weight:800;letter-spacing:-.5px;
+}}
+.logo-name b{{
+background:linear-gradient(90deg,var(--purple2),var(--pink2));
+-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}}
+.nav-right{{display:flex;align-items:center;gap:10px}}
+.nav-badge{{
+display:flex;align-items:center;gap:6px;
+font-size:12px;font-weight:700;
+padding:7px 14px;border-radius:20px;
+background:rgba(0,212,170,.1);
+border:1px solid rgba(0,212,170,.25);
+color:var(--teal2);
+}}
+.nav-badge i{{font-size:10px;animation:pulse 2s infinite}}
+@keyframes pulse{{0%,100%{{opacity:1}}50%{{opacity:.4}}}}
+.btn-tg-nav{{
+display:flex;align-items:center;gap:7px;
+font-size:13px;font-weight:700;
+padding:9px 18px;border-radius:20px;
+background:linear-gradient(135deg,var(--purple),var(--pink));
+color:#fff;text-decoration:none;
+box-shadow:0 4px 20px var(--glow-purple);
+transition:all .25s;border:none;cursor:pointer;
+}}
+.btn-tg-nav:hover{{transform:translateY(-2px);box-shadow:0 8px 30px var(--glow-purple)}}
+/* ─── PLAYER ─── */
+initPlayer();
+
 const vid = document.getElementById('vid');
 const vf = document.getElementById('vf');
 const pbtn = document.getElementById('pbtn');
