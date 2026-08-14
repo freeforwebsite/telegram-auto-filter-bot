@@ -360,7 +360,7 @@
                     
                     let thumbHtml = "<div class='no-poster'>No Image</div>";
                     if(movie.file_id) {
-                        thumbHtml = "<img src='/thumb/" + movie.file_id + "' class='movie-poster' onerror='this.outerHTML=\"<div class=\\"no-poster\\">No Image</div>\"' />";
+                        thumbHtml = "<img src='/thumb/" + movie.file_id + "' class='movie-poster' onerror='this.outerHTML=\"<div class=&quot;no-poster&quot;>No Image</div>\"' />";
                     }
                     
                     let copyBtn = "<button class='btn-primary' style='padding: 0.25rem 0.5rem; font-size: 0.75rem;' onclick='navigator.clipboard.writeText(\"" + (movie.file_id || '') + "\"); showToast(\"File ID Copied!\");'>Copy ID</button>";
@@ -461,7 +461,7 @@
                     
                     let thumbHtml = "<div class='no-poster'>No Image</div>";
                     if(movie.poster) {
-                        thumbHtml = "<img src='" + movie.poster + "' class='movie-poster' onerror='this.outerHTML=\"<div class=\\\"no-poster\\\">No Image</div>\"' />";
+                        thumbHtml = "<img src='" + movie.poster + "' class='movie-poster' onerror='this.outerHTML=\"<div class=&quot;no-poster&quot;>No Image</div>\"' />";
                     }
                     
                     let linksHtml = movie.links.map(l => "<span class='badge database'>" + l.quality + "</span>").join(" ");
