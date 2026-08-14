@@ -208,6 +208,18 @@
                     </div>
 
                     <div style="margin-bottom: 1rem;">
+                        <label style="display:block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.875rem;">Category</label>
+                        <select id="pub-category" style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: white;">
+                            <option value="All" style="color: black;">All (General Movie)</option>
+                            <option value="New Releases" style="color: black;">New Releases</option>
+                            <option value="Trending" style="color: black;">Trending</option>
+                            <option value="Web Series" style="color: black;">Web Series</option>
+                            <option value="Popular" style="color: black;">Popular</option>
+                            <option value="Tamil Dubbed" style="color: black;">Tamil Dubbed</option>
+                        </select>
+                    </div>
+
+                    <div style="margin-bottom: 1rem;">
                         <label style="display:block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.875rem;">Description</label>
                         <textarea id="pub-desc" rows="3" style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: white; resize: vertical;"></textarea>
                     </div>
@@ -470,8 +482,10 @@
                     
                     let linksHtml = movie.links.map(l => "<span class='badge database'>" + l.quality + "</span>").join(" ");
                     
+                    let categoryHtml = movie.category ? `<span class='badge' style='background: rgba(245, 158, 11, 0.2); color: #fcd34d; margin-top: 5px;'>${movie.category}</span>` : "";
+                    
                     tr.innerHTML = "<td class='poster-cell'>" + thumbHtml + "</td>" +
-                                   "<td><div class='movie-name'>" + movie.title + "</div></td>" + 
+                                   "<td><div class='movie-name'>" + movie.title + "</div>" + categoryHtml + "</td>" + 
                                    "<td>" + linksHtml + "</td>" + 
                                    "<td style='text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end; align-items: center; height: 100px;'>" + 
                                    "<button class='btn-danger' style='padding: 0.25rem 0.5rem; font-size: 0.75rem;' onclick='deletePublished(\"" + movie._id + "\")'>Delete</button>" + 
@@ -485,6 +499,7 @@
             document.getElementById('pub-id').value = '';
             document.getElementById('pub-title').value = '';
             document.getElementById('pub-poster').value = '';
+            document.getElementById('pub-category').value = 'All';
             document.getElementById('pub-desc').value = '';
             document.getElementById('pub-links-container').innerHTML = '';
             addLinkRow();
@@ -510,6 +525,7 @@
             const id = document.getElementById('pub-id').value;
             const title = document.getElementById('pub-title').value;
             const poster = document.getElementById('pub-poster').value;
+            const category = document.getElementById('pub-category').value;
             const desc = document.getElementById('pub-desc').value;
             
             const linkRows = document.querySelectorAll('.link-row');
@@ -529,7 +545,7 @@
                 const res = await fetch(API_URL + "/published", {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({id: id, title: title, poster: poster, description: desc, links: links})
+                    body: JSON.stringify({id: id, title: title, poster: poster, category: category, description: desc, links: links})
                 });
                 if(res.ok) {
                     showToast("Published Successfully!");

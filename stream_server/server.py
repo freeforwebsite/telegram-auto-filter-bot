@@ -155,12 +155,13 @@ class StreamServer:
             "title": data.get("title"),
             "description": data.get("description", ""),
             "poster": data.get("poster", ""),
+            "category": data.get("category", "All"),
             "links": data.get("links", []) # [{"quality": "1080p", "file_id": "..."}]
         }
         
         if data.get("id"):
             from bson.objectid import ObjectId
-            await published_col.update_one({"_id": ObjectId(data["id"])}, {"": movie_doc})
+            await published_col.update_one({"_id": ObjectId(data["id"])}, {"$set": movie_doc})
         else:
             await published_col.insert_one(movie_doc)
             
