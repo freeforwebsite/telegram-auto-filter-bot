@@ -155,6 +155,7 @@ class StreamServer:
             "title": data.get("title"),
             "description": data.get("description", ""),
             "poster": data.get("poster", ""),
+            "backdrop": data.get("backdrop", ""),
             "category": data.get("category", "All"),
             "links": data.get("links", []) # [{"quality": "1080p", "file_id": "..."}]
         }
