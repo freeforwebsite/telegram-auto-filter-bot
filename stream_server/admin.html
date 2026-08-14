@@ -247,8 +247,8 @@
                                        "<td><span class='badge failed'>Failed</span></td>" + 
                                        "<td style='color: var(--text-muted); font-size: 0.875rem;'>" + date + "</td>" + 
                                        "<td style='text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end;'>" + 
-                                       "<button class='btn-primary' style='padding: 0.25rem 0.5rem; font-size: 0.75rem;' onclick='actionSingle("retry", "" + movie._id + "")'>Retry</button>" + 
-                                       "<button class='btn-danger' style='padding: 0.25rem 0.5rem; font-size: 0.75rem;' onclick='actionSingle("delete", "" + movie._id + "")'>Delete</button>" + 
+                                       "<button class='btn-primary' style='padding: 0.25rem 0.5rem; font-size: 0.75rem;' onclick='actionSingle(\"retry\", \"" + movie._id + "\")'>Retry</button>" + 
+                                       "<button class='btn-danger' style='padding: 0.25rem 0.5rem; font-size: 0.75rem;' onclick='actionSingle(\"delete\", \"" + movie._id + "\")'>Delete</button>" + 
                                        "</td>";
                         tbody.appendChild(tr);
                     });
@@ -302,7 +302,7 @@
                     // Fallback image if TMDB fails
                     let thumbHtml = "<div class='no-poster'>No Image</div>";
                     if(movie.file_id) {
-                        thumbHtml = "<img src='/thumb/" + movie.file_id + "' class='movie-poster' onerror='this.outerHTML="<div class=\"no-poster\">No Image</div>"' />";
+                        thumbHtml = "<img src='/thumb/" + movie.file_id + "' class='movie-poster' onerror='this.outerHTML=\"<div class=\\\"no-poster\\\">No Image</div>\"' />";
                     }
                     
                     tr.innerHTML = "<td>" + (startNo + index + 1) + "</td>" +
