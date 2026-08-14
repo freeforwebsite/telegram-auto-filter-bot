@@ -307,12 +307,12 @@
     </div>
 
     <script>
-        const API_URL = '/api/queue';
+﻿        const API_URL = '/api/queue';
         
         async function loadData() {
             try {
                 // Fetch Stats
-                const statsRes = await fetch(\/stats);
+                const statsRes = await fetch(API_URL + '/stats');
                 if(statsRes.status === 401) return requestPassword();
                 const stats = await statsRes.json();
                 
@@ -321,7 +321,7 @@
                 document.getElementById('stat-failed').innerText = stats.failed;
 
                 // Fetch Failed List
-                const failedRes = await fetch(\/failed);
+                const failedRes = await fetch(API_URL + '/failed');
                 const failedMovies = await failedRes.json();
                 
                 const tbody = document.getElementById('failed-table-body');
@@ -333,15 +333,13 @@
                     failedMovies.forEach(movie => {
                         const date = new Date(movie.added_on).toLocaleString();
                         const tr = document.createElement('tr');
-                        tr.innerHTML = 
-                            <td class="movie-name">\</td>
-                            <td><span class="badge">Failed</span></td>
-                            <td style="color: var(--text-muted); font-size: 0.875rem;">\</td>
-                            <td style="text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end;">
-                                <button class="btn-primary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="actionSingle('retry', '\')">Retry</button>
-                                <button class="btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="actionSingle('delete', '\')">Delete</button>
-                            </td>
-                        ;
+                        tr.innerHTML = '<tr><td class="movie-name">' + movie.movie_name + '</td>' + 
+                                       '<td><span class="badge">Failed</span></td>' + 
+                                       '<td style="color: var(--text-muted); font-size: 0.875rem;">' + date + '</td>' + 
+                                       '<td style="text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end;">' + 
+                                       '<button class="btn-primary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="actionSingle(\'retry\', \'' + movie._id + '\')">Retry</button>' + 
+                                       '<button class="btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="actionSingle(\'delete\', \'' + movie._id + '\')">Delete</button>' + 
+                                       '</td></tr>';
                         tbody.appendChild(tr);
                     });
                 }
@@ -357,29 +355,29 @@
         async function requestPassword() {
             const pwd = prompt("Admin Password Required:");
             if(pwd) {
-                document.cookie = dmin_pwd=\D:\; path=/;
+                document.cookie = "admin_pwd=" + pwd + "; path=/";
                 loadData();
             }
         }
 
         async function actionSingle(action, id) {
             try {
-                const res = await fetch(\/\, {
+                const res = await fetch(API_URL + '/' + action, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({id: id})
                 });
                 if(res.ok) {
-                    showToast(Successfully \ed movie);
+                    showToast("Successfully " + action + "ed movie");
                     loadData();
                 } else {
-                    showToast(Error: \, true);
+                    showToast("Error: " + await res.text(), true);
                 }
             } catch(e) { showToast("Network Error", true); }
         }
 
         async function actionAll(action) {
-            if(!confirm(Are you sure you want to \?)) return;
+            if(!confirm("Are you sure you want to " + action.replace('_', ' ') + "?")) return;
             
             const btn = document.getElementById(action === 'retry_all' ? 'btn-retry-all' : 'btn-clear-all');
             const originalText = btn.innerText;
@@ -387,12 +385,12 @@
             btn.disabled = true;
             
             try {
-                const res = await fetch(\/\, { method: 'POST' });
+                const res = await fetch(API_URL + '/' + action, { method: 'POST' });
                 if(res.ok) {
-                    showToast(Successfully processed all);
+                    showToast("Successfully processed all");
                     loadData();
                 } else {
-                    showToast(Error: \, true);
+                    showToast("Error: " + await res.text(), true);
                 }
             } catch(e) { 
                 showToast("Network Error", true); 
@@ -412,6 +410,7 @@
 
         // Init
         document.addEventListener('DOMContentLoaded', loadData);
-    </script>
+
+</script>
 </body>
 </html>
