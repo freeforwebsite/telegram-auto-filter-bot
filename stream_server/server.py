@@ -1497,9 +1497,680 @@ box-shadow:0 4px 20px var(--glow-purple);
 transition:all .25s;border:none;cursor:pointer;
 }}
 .btn-tg-nav:hover{{transform:translateY(-2px);box-shadow:0 8px 30px var(--glow-purple)}}
-/* ─── PLAYER ─── */
-initPlayer();
+/* ─── COUNTDOWN ─── */
+#cd-section{{
+display:flex;flex-direction:column;align-items:center;
+padding:40px 0 60px;
+animation:fadeUp .6s ease both;
+}}
+@keyframes fadeUp{{from{{opacity:0;transform:translateY(24px)}}to{{opacity:1;transform:translateY(0)}}}}
+/* Circular progress timer */
+.timer-wrap{{
+position:relative;width:180px;height:180px;
+margin-bottom:36px;
+}}
+.timer-svg{{width:100%;height:100%;transform:rotate(-90deg)}}
+.t-track{{fill:none;stroke:rgba(255,255,255,.06);stroke-width:6}}
+.t-prog{{
+fill:none;stroke-width:6;stroke-linecap:round;
+stroke:url(#tg);
+stroke-dasharray:502;stroke-dashoffset:502;
+transition:stroke-dashoffset .12s linear;
+filter:drop-shadow(0 0 8px rgba(123,92,245,.8));
+}}
+.timer-inner{{
+position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+gap:2px;
+}}
+.timer-num{{
+font-family:'Poppins',sans-serif;
+font-size:56px;font-weight:900;line-height:1;letter-spacing:-3px;
+background:linear-gradient(160deg,var(--white),var(--purple2),var(--pink2));
+-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}}
+.timer-label{{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3)}}
+/* Orbit dot */
+.t-orbit{{position:absolute;inset:-4px;border-radius:50%;animation:orb 1.1s linear infinite}}
+.t-orbit::before{{
+content:'';position:absolute;top:8px;left:50%;transform:translateX(-50%);
+width:10px;height:10px;border-radius:50%;
+background:var(--pink2);
+box-shadow:0 0 14px var(--pink),0 0 28px var(--glow-pink);
+}}
+@keyframes orb{{to{{transform:rotate(360deg)}}}}
+.cd-title{{
+font-family:'Poppins',sans-serif;
+font-size:26px;font-weight:800;letter-spacing:-.5px;
+text-align:center;margin-bottom:8px;
+}}
+.cd-title span{{
+background:linear-gradient(90deg,var(--purple2),var(--pink2),var(--blue2));
+-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}}
+.cd-sub{{font-size:14px;color:var(--text2);text-align:center;margin-bottom:32px;font-weight:500}}
+/* Steps — pill row */
+.cd-steps{{
+display:flex;align-items:center;gap:8px;
+background:var(--card);
+border:1px solid var(--border);
+border-radius:20px;padding:6px;
+}}
+.cd-step{{
+display:flex;align-items:center;gap:8px;
+padding:10px 20px;border-radius:16px;
+font-size:12px;font-weight:700;letter-spacing:.3px;
+color:var(--text3);transition:all .4s cubic-bezier(.16,1,.3,1);
+}}
+.cd-step i{{font-size:11px}}
+.cd-step.on{{
+background:linear-gradient(135deg,var(--purple),var(--pink));
+color:#fff;
+box-shadow:0 4px 20px var(--glow-purple);
+}}
+.cd-step.ok{{color:var(--teal2);background:rgba(0,212,170,.1)}}
+.step-arrow{{color:var(--text3);font-size:10px}}
+/* ─── PLAYER SECTION ─── */
+#ps{{display:none}}
+#ps.show{{display:block;animation:fadeUp .6s ease both}}
+/* ─── VIDEO PLAYER ─── */
+.video-section{
+border-radius: 0;
+border: none;
+width: 100%;
+max-height: 100vh;
+{
+background:var(--card);
+border-radius:24px;
+overflow:hidden;
+border:1px solid var(--border);
+box-shadow:0 24px 80px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.04);
+margin-bottom:0;
+}}
+.video-top-bar{{
+display:flex;align-items:center;justify-content:space-between;
+padding:14px 18px;
+border-bottom:1px solid var(--border);
+}}
+.vtb-left{{display:flex;align-items:center;gap:10px}}
+.live-dot{{
+display:flex;align-items:center;gap:6px;
+background:rgba(0,212,170,.12);
+border:1px solid rgba(0,212,170,.3);
+padding:5px 12px;border-radius:20px;
+font-size:11px;font-weight:700;color:var(--teal2);letter-spacing:.5px;
+}}
+.live-dot::before{{
+content:'';width:6px;height:6px;border-radius:50%;
+background:var(--teal2);animation:pulse 1.5s infinite;
+box-shadow:0 0 8px var(--teal);
+}}
+.vtb-right{{display:flex;align-items:center;gap:8px}}
+.icon-btn{{
+width:34px;height:34px;border-radius:10px;border:none;cursor:pointer;
+background:rgba(255,255,255,.06);color:var(--text2);
+display:flex;align-items:center;justify-content:center;font-size:13px;
+transition:all .2s;
+}}
+.icon-btn:hover{{background:rgba(255,255,255,.12);color:#fff}}
+/* Video frame */
+.vid-frame{{
+position:relative;background:#000;
+}}
+.vid-frame::before{{
+content:'';position:absolute;top:0;left:0;right:0;height:2px;z-index:10;
+background:linear-gradient(90deg,var(--purple),var(--pink),var(--blue),var(--teal));
+background-size:300% 100%;animation:rainbowSlide 3s linear infinite;
+}}
+@keyframes rainbowSlide{{0%{{background-position:0% 0}}100%{{background-position:300% 0}}}}
+#vid{{display:block;width:100%;aspect-ratio:16/9;background:#000;cursor:pointer}}
+/* Buffer overlay */
+.vbuf{{
+position:absolute;inset:0;display:none;
+align-items:center;justify-content:center;
+background:rgba(11,15,30,.7);backdrop-filter:blur(4px);
+}}
+.vbuf.on{{display:flex}}
+.buf-spin{{
+width:50px;height:50px;border-radius:50%;
+border:3px solid rgba(123,92,245,.2);
+border-top-color:var(--purple2);
+border-right-color:var(--pink2);
+animation:spin .7s linear infinite;
+}}
+@keyframes spin{{to{{transform:rotate(360deg)}}}}
+/* Center pop */
+.cpop-w{{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}}
+.cpop-ico{{
+width:72px;height:72px;border-radius:50%;
+background:linear-gradient(135deg,rgba(123,92,245,.4),rgba(240,80,126,.4));
+backdrop-filter:blur(8px);border:1.5px solid rgba(255,255,255,.25);
+display:flex;align-items:center;justify-content:center;
+font-size:24px;color:#fff;opacity:0;
+}}
+.cpop-ico.go{{animation:cpAnim .55s forwards}}
+@keyframes cpAnim{{
+0%{{opacity:1;transform:scale(.8)}}
+55%{{opacity:1;transform:scale(1.1)}}
+100%{{opacity:0;transform:scale(1.4)}}
+}}
+/* ─── CONTROL BAR ─── */
+.ctrl{{
+position:absolute;bottom:0;left:0;right:0;
+background:linear-gradient(transparent,rgba(11,15,30,.98));
+padding:52px 18px 14px;
+transition:opacity .3s;
+}}
+.vid-frame.hc .ctrl{{opacity:0;pointer-events:none}}
+.vid-frame.hc{{cursor:none}}
+/* Seekbar */
+.seekbar{{
+position:relative;height:4px;background:rgba(255,255,255,.1);
+border-radius:10px;cursor:pointer;margin-bottom:14px;transition:height .15s;
+}}
+.seekbar:hover{{height:6px}}
+.sb-buf,.sb-p{{position:absolute;inset:0;height:100%;border-radius:10px}}
+.sb-buf{{background:rgba(255,255,255,.15)}}
+.sb-p{{
+background:linear-gradient(90deg,var(--purple),var(--pink),var(--blue));
+width:0%;transition:width .1s linear;
+box-shadow:0 0 10px rgba(123,92,245,.6);
+}}
+.sb-thumb{{
+position:absolute;top:50%;width:14px;height:14px;border-radius:50%;
+background:#fff;box-shadow:0 0 10px var(--purple2),0 0 20px var(--glow-purple);
+transform:translate(-50%,-50%) scale(0);transition:transform .15s;pointer-events:none;
+}}
+.seekbar:hover .sb-thumb{{transform:translate(-50%,-50%) scale(1)}}
+.sb-tip{{
+position:absolute;bottom:18px;transform:translateX(-50%);
+background:var(--card2);border:1px solid var(--border2);
+color:var(--text);font-size:11px;font-weight:700;
+padding:4px 10px;border-radius:8px;pointer-events:none;
+white-space:nowrap;opacity:0;transition:opacity .15s;
+box-shadow:0 4px 16px rgba(0,0,0,.5);
+}}
+.seekbar:hover .sb-tip{{opacity:1}}
+/* Control buttons */
+.ctrl-row{{display:flex;align-items:center;gap:2px}}
+.cb{{
+background:none;border:none;color:rgba(255,255,255,.55);
+cursor:pointer;padding:7px 9px;border-radius:10px;font-size:14px;
+transition:all .2s;display:flex;align-items:center;gap:4px;
+}}
+.cb:hover{{background:rgba(255,255,255,.1);color:#fff}}
+#pbtn{{font-size:19px}}
+.t-disp{{
+font-size:12px;font-weight:700;color:rgba(255,255,255,.5);
+padding:0 8px;white-space:nowrap;letter-spacing:.3px;
+}}
+.vol-g{{display:flex;align-items:center;gap:6px}}
+.vol-r{{
+-webkit-appearance:none;appearance:none;
+width:72px;height:4px;border-radius:4px;
+background:rgba(255,255,255,.18);outline:none;cursor:pointer;
+}}
+.vol-r::-webkit-slider-thumb{{
+-webkit-appearance:none;width:13px;height:13px;
+border-radius:50%;background:#fff;cursor:pointer;
+box-shadow:0 0 8px var(--purple2);
+}}
+.spop{{
+position:absolute;bottom:58px;right:0;
+background:var(--card2);border:1px solid var(--border2);
+border-radius:14px;display:none;z-index:30;min-width:120px;
+box-shadow:0 20px 60px rgba(0,0,0,.8);overflow:hidden;
+}}
+.spop.on{{display:block}}
+.si{{
+padding:10px 18px;font-size:13px;font-weight:600;
+cursor:pointer;color:var(--text2);transition:all .15s;
+}}
+.si:hover,.si.sel{{background:rgba(123,92,245,.15);color:var(--purple2)}}
+/* ─── INFO CARD BELOW PLAYER ─── */
+.info-card{display:none;{
+display:flex;flex-wrap:wrap;gap:16px;align-items:center;
+background:var(--card);border:1px solid var(--border);
+border-radius:20px;padding:18px 22px;
+margin-bottom:0;
+box-shadow:0 8px 40px rgba(0,0,0,.3);
+}}
+.info-left{{flex:1;min-width:0}}
+.info-fname{{
+font-family:'Poppins',sans-serif;
+font-size:16px;font-weight:700;letter-spacing:-.3px;
+color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+margin-bottom:8px;
+}}
+.info-tags{{display:flex;flex-wrap:wrap;gap:8px}}
+.tag{{
+display:flex;align-items:center;gap:5px;
+font-size:11px;font-weight:700;letter-spacing:.3px;
+padding:5px 12px;border-radius:20px;
+}}
+.tag-purple{{background:rgba(123,92,245,.15);color:var(--purple2);border:1px solid rgba(123,92,245,.25)}}
+.tag-teal{{background:rgba(0,212,170,.12);color:var(--teal2);border:1px solid rgba(0,212,170,.25)}}
+.tag-blue{{background:rgba(78,155,255,.12);color:var(--blue2);border:1px solid rgba(78,155,255,.25)}}
+/* Download button */
+.btn-download{{
+display:flex;align-items:center;gap:10px;
+padding:13px 26px;border-radius:16px;
+font-family:'Poppins',sans-serif;
+font-size:14px;font-weight:700;
+color:#fff;text-decoration:none;border:none;cursor:pointer;
+background:linear-gradient(135deg,var(--purple),var(--pink));
+box-shadow:0 6px 28px var(--glow-purple);
+transition:all .25s;position:relative;overflow:hidden;
+white-space:nowrap;
+}}
+.btn-download::before{{
+content:'';position:absolute;inset:0;
+background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.2) 50%,transparent 65%);
+background-size:200% 100%;animation:shimmer 2.5s ease-in-out infinite;
+}}
+.btn-download:hover{{transform:translateY(-3px);box-shadow:0 12px 40px var(--glow-purple)}}
+@keyframes shimmer{{0%{{background-position:-200% 0}}100%{{background-position:200% 0}}}}
+/* ─── EXTERNAL PLAYERS ─── */
+.section-title{display:none;{
+display:flex;align-items:center;gap:12px;
+margin-bottom:16px;
+}}
+.section-title h2{{
+font-family:'Poppins',sans-serif;
+font-size:18px;font-weight:800;letter-spacing:-.3px;
+color:#fff;
+}}
+.section-title .badge{{
+font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+padding:4px 12px;border-radius:20px;
+background:rgba(255,140,66,.15);color:var(--orange);
+border:1px solid rgba(255,140,66,.3);
+}}
+.players-grid{display:none;{
+display:grid;grid-template-columns:repeat(3,1fr);gap:14px;
+margin-bottom:24px;
+}}
+.player-card{{
+background:var(--card);border:1px solid var(--border);
+border-radius:22px;padding:24px 16px 20px;
+display:flex;flex-direction:column;align-items:center;gap:12px;
+cursor:pointer;text-decoration:none;color:var(--text);
+transition:all .3s cubic-bezier(.16,1,.3,1);
+position:relative;overflow:hidden;
+}}
+/* Hover top shimmer */
+.player-card::before{{
+content:'';position:absolute;top:0;left:0;right:0;height:2px;
+transform:scaleX(0);transition:transform .3s ease;
+transform-origin:left;
+}}
+.pc-vlc::before{{background:linear-gradient(90deg,#FF8C00,#FFD166)}}
+.pc-mx::before{{background:linear-gradient(90deg,#4E9BFF,#00D4AA)}}
+.pc-pi::before{{background:linear-gradient(90deg,#00D4AA,#7B5CF5)}}
+.player-card:hover{{
+transform:translateY(-6px);
+border-color:var(--border2);
+box-shadow:0 20px 60px rgba(0,0,0,.5);
+}}
+.player-card:hover::before{{transform:scaleX(1)}}
+/* App icon */
+.app-icon{{
+width:64px;height:64px;border-radius:20px;
+display:flex;align-items:center;justify-content:center;
+font-size:30px;
+box-shadow:0 8px 24px rgba(0,0,0,.4);
+position:relative;overflow:hidden;
+}}
+.app-icon::after{{
+content:'';position:absolute;inset:0;
+background:linear-gradient(145deg,rgba(255,255,255,.15),transparent 60%);
+}}
+.app-name{{
+font-family:'Poppins',sans-serif;
+font-size:15px;font-weight:800;letter-spacing:-.2px;color:#fff;
+text-align:center;
+}}
+.app-feats{{
+display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;
+}}
+.app-feat{{
+display:flex;align-items:center;gap:6px;
+font-size:11px;font-weight:600;color:var(--text2);
+}}
+.app-feat i{{font-size:9px}}
+.pc-vlc .app-feat i{{color:var(--orange)}}
+.pc-mx .app-feat i{{color:var(--blue2)}}
+.pc-pi .app-feat i{{color:var(--teal2)}}
+/* Open buttons */
+.btn-open{{
+display:flex;align-items:center;justify-content:center;gap:8px;
+width:100%;padding:11px;border-radius:14px;
+font-size:13px;font-weight:800;letter-spacing:.3px;
+border:none;cursor:pointer;color:#fff;
+transition:all .25s;position:relative;overflow:hidden;
+}}
+.btn-open::before{{
+content:'';position:absolute;inset:0;
+background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.15) 50%,transparent 65%);
+background-size:200% 100%;
+}}
+.btn-open:hover::before{{animation:shimmer 1.5s ease-in-out infinite}}
+.pc-vlc .btn-open{{background:linear-gradient(135deg,#FF8C00,#FF6600);box-shadow:0 4px 20px rgba(255,140,0,.3)}}
+.pc-mx .btn-open{{background:linear-gradient(135deg,#1976D2,#0288D1);box-shadow:0 4px 20px rgba(30,118,210,.3)}}
+.pc-pi .btn-open{{background:linear-gradient(135deg,#00B894,#00D4AA);box-shadow:0 4px 20px rgba(0,212,170,.3)}}
+.btn-open:hover{{transform:scale(1.02)}}
+/* ─── TELEGRAM CARD ─── */
+.tg-card{{
+border-radius:24px;overflow:hidden;
+margin-bottom:24px;
+position:relative;
+background:linear-gradient(135deg,rgba(123,92,245,.2),rgba(240,80,126,.15),rgba(78,155,255,.1));
+border:1px solid rgba(123,92,245,.25);
+box-shadow:0 16px 60px rgba(123,92,245,.15);
+}}
+/* Animated background pattern */
+.tg-card::before{{
+content:'';position:absolute;inset:0;
+background:
+radial-gradient(circle at 20% 50%,rgba(123,92,245,.15),transparent 50%),
+radial-gradient(circle at 80% 50%,rgba(240,80,126,.12),transparent 50%);
+animation:tgBg 6s ease-in-out infinite alternate;
+}}
+@keyframes tgBg{{
+0%{{transform:scale(1)}}100%{{transform:scale(1.1)}}
+}}
+.tg-inner{{
+position:relative;z-index:1;
+padding:28px 28px;
+display:flex;flex-wrap:wrap;align-items:center;gap:20px;
+}}
+.tg-icon-wrap{{
+width:64px;height:64px;border-radius:20px;flex-shrink:0;
+background:linear-gradient(135deg,var(--purple),var(--pink));
+display:flex;align-items:center;justify-content:center;
+font-size:28px;color:#fff;
+box-shadow:0 8px 30px var(--glow-purple);
+position:relative;
+}}
+.tg-icon-wrap::after{{
+content:'';position:absolute;inset:0;border-radius:20px;
+background:linear-gradient(145deg,rgba(255,255,255,.2),transparent);
+}}
+.tg-text{{flex:1;min-width:160px}}
+.tg-label{{
+font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+color:var(--purple2);margin-bottom:6px;
+display:flex;align-items:center;gap:6px;
+}}
+.tg-label::before{{content:'';width:16px;height:2px;background:var(--purple2);border-radius:2px}}
+.tg-name{{
+font-family:'Poppins',sans-serif;
+font-size:20px;font-weight:800;letter-spacing:-.5px;color:#fff;
+margin-bottom:6px;
+}}
+.tg-desc{{font-size:13px;color:rgba(255,255,255,.6);font-weight:500;line-height:1.5}}
+.btn-join{{
+display:flex;align-items:center;gap:10px;
+padding:14px 28px;border-radius:16px;
+font-family:'Poppins',sans-serif;
+font-size:14px;font-weight:800;
+color:#fff;text-decoration:none;border:none;cursor:pointer;
+background:linear-gradient(135deg,#229ED9,#1A7FB5);
+box-shadow:0 6px 28px rgba(34,158,217,.35);
+transition:all .25s;white-space:nowrap;
+position:relative;overflow:hidden;
+}}
+.btn-join::before{{
+content:'';position:absolute;inset:0;
+background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.2) 50%,transparent 65%);
+background-size:200% 100%;animation:shimmer 2s ease-in-out 1s infinite;
+}}
+.btn-join:hover{{transform:translateY(-3px);box-shadow:0 12px 40px rgba(34,158,217,.5)}}
+.btn-join i{{font-size:16px}}
+/* ─── STATS ROW ─── */
+.stats-row{display:none;{
+display:grid;grid-template-columns:repeat(4,1fr);gap:12px;
+margin-bottom:24px;
+}}
+.stat-box{{
+background:var(--card);border:1px solid var(--border);
+border-radius:18px;padding:18px 14px;
+text-align:center;
+transition:all .25s;
+}}
+.stat-box:hover{{border-color:var(--border2);transform:translateY(-3px)}}
+.stat-icon{{font-size:22px;margin-bottom:8px}}
+.stat-val{{
+font-family:'Poppins',sans-serif;
+font-size:15px;font-weight:800;letter-spacing:-.3px;color:#fff;
+margin-bottom:3px;
+}}
+.stat-lbl{{font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3)}}
+/* ─── FOOTER ─── */
+footer{{
+text-align:center;padding:20px 0;
+border-top:1px solid var(--border);
+}}
+.footer-tags{{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin-bottom:12px}}
+.ftag{{
+display:flex;align-items:center;gap:6px;
+font-size:12px;font-weight:600;color:var(--text3);
+}}
+.ftag i{{font-size:10px}}
+.fcopy{{font-size:12px;color:var(--text3)}}
+/* ─── TOAST ─── */
+#toast{{
+position:fixed;bottom:24px;left:50%;z-index:999;
+transform:translateX(-50%) translateY(120px);
+background:var(--card2);
+border:1px solid var(--border2);
+border-radius:20px;padding:16px 20px;
+display:flex;align-items:center;gap:14px;
+box-shadow:0 24px 80px rgba(0,0,0,.7),0 0 0 1px rgba(123,92,245,.2);
+transition:transform .5s cubic-bezier(.16,1,.3,1);
+max-width:360px;width:calc(100% - 32px);
+}}
+#toast.show{{transform:translateX(-50%) translateY(0)}}
+.toast-icon-wrap{{
+width:44px;height:44px;border-radius:14px;flex-shrink:0;
+display:flex;align-items:center;justify-content:center;font-size:20px;
+}}
+.t-body{{flex:1}}
+.t-title{{font-size:14px;font-weight:800;color:#fff;margin-bottom:3px;font-family:'Poppins',sans-serif}}
+.t-sub{{font-size:12px;color:var(--text2);line-height:1.5}}
+#t-x{{background:rgba(255,255,255,.08);border:none;border-radius:10px;
+width:32px;height:32px;color:var(--text2);cursor:pointer;font-size:13px;
+display:flex;align-items:center;justify-content:center;flex-shrink:0;
+transition:all .2s}}
+#t-x:hover{{background:rgba(255,255,255,.15);color:#fff}}
+/* ─── RESPONSIVE ─── */
+@media(max-width:600px){{
+.stats-row{display:none;{grid-template-columns:repeat(2,1fr)}}
+.players-grid{display:none;{grid-template-columns:repeat(3,1fr);gap:10px}}
+.app-icon{{width:52px;height:52px;border-radius:16px;font-size:24px}}
+.app-feats{{display:none}}
+.vol-r{{width:48px}}
+.nav-badge{{display:none}}
+}}
+</style>
+</head>
+<body>
+<div class="bg-wrap">
+<div class="bg-glow g1"></div>
+<div class="bg-glow g2"></div>
+<div class="bg-glow g3"></div>
+<div class="bg-grid"></div>
+</div>
+<div class="page">
+<!-- NAV -->
 
+<!-- COUNTDOWN -->
+<!-- PLAYER SECTION -->
+<div id="ps" class="show">
+<!-- Video player -->
+<div class="video-section">
+<div class="video-top-bar">
+<div class="vtb-left">
+<div class="live-dot">● LIVE STREAM</div>
+</div>
+<div class="vtb-right">
+<button class="icon-btn" id="pipbtn" title="Picture in Picture"><i class="fas fa-clone"></i></button>
+<button class="icon-btn" id="fsbtn" title="Fullscreen"><i class="fas fa-expand"></i></button>
+</div>
+</div>
+<div class="vid-frame" id="vf">
+<video id="vid" preload="auto" playsinline autoplay>
+    <source src="/watch/{file_id}/{filename}" type="video/mp4">
+</video>
+<div class="vbuf" id="vbuf"><div class="buf-spin"></div></div>
+<div class="cpop-w"><div class="cpop-ico" id="cpico"><i class="fas fa-play"></i></div></div>
+<div class="ctrl" id="ctrl">
+<div class="seekbar" id="seekbar">
+<div class="sb-buf" id="sbbuf"></div>
+<div class="sb-p" id="sbp"></div>
+<div class="sb-thumb" id="sbth"></div>
+<div class="sb-tip" id="sbtip">0:00</div>
+</div>
+<div class="ctrl-row">
+<button class="cb" id="pbtn"><i class="fas fa-play"></i></button>
+<button class="cb" id="bbtn"><i class="fas fa-backward-step"></i><span style="font-size:9px">10</span></button>
+<button class="cb" id="fbtn"><i class="fas fa-forward-step"></i><span style="font-size:9px">10</span></button>
+<div class="vol-g">
+<button class="cb" id="mbtn"><i class="fas fa-volume-high"></i></button>
+<input type="range" class="vol-r" id="volr" min="0" max="1" step="0.02" value="1">
+</div>
+<span class="t-disp" id="tdisp">0:00 / 0:00</span>
+<div style="margin-left:auto;display:flex;align-items:center;gap:2px;position:relative">
+<button class="cb" id="spdbtn">1×</button>
+<div class="spop" id="spop">
+<div class="si" data-s="0.25">0.25×</div>
+<div class="si" data-s="0.5">0.5×</div>
+<div class="si" data-s="0.75">0.75×</div>
+<div class="si sel" data-s="1">1×</div>
+<div class="si" data-s="1.25">1.25×</div>
+<div class="si" data-s="1.5">1.5×</div>
+<div class="si" data-s="2">2×</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Info Card -->
+<div class="info-card">
+<div class="info-left">
+<div class="info-fname" id="pfname">{filename}</div>
+<div class="info-tags">
+<div class="tag tag-purple"><i class="fas fa-bolt"></i> Direct Stream</div>
+<div class="tag tag-teal"><i class="fas fa-shield-halved"></i> Encrypted</div>
+<div class="tag tag-blue" id="dur-tag"><i class="fas fa-clock"></i> Loading…</div>
+</div>
+</div>
+<a id="dlbtn" href="/watch/{file_id}/{filename}" download class="btn-download">
+<i class="fas fa-download"></i> Download File
+</a>
+</div>
+<!-- Stats Row -->
+<div class="stats-row">
+<div class="stat-box">
+<div class="stat-icon">⚡</div>
+<div class="stat-val" style="color:var(--yellow)">Fast</div>
+<div class="stat-lbl">Transfer</div>
+</div>
+<div class="stat-box">
+<div class="stat-icon">🔒</div>
+<div class="stat-val" style="color:var(--teal2)">E2E</div>
+<div class="stat-lbl">Encrypted</div>
+</div>
+<div class="stat-box">
+<div class="stat-icon">🎬</div>
+<div class="stat-val" style="color:var(--purple2)">HD</div>
+<div class="stat-lbl">Quality</div>
+</div>
+<div class="stat-box">
+<div class="stat-icon">∞</div>
+<div class="stat-val" style="color:var(--pink2)">None</div>
+<div class="stat-lbl">Limits</div>
+</div>
+</div>
+<!-- External Players -->
+<div class="section-title">
+<h2>Open in External Player</h2>
+<span class="badge">HEVC · Multi-Audio</span>
+</div>
+<div class="players-grid">
+<!-- VLC -->
+<div class="player-card pc-vlc" onclick="openIn('vlc')">
+<div class="app-icon" style="background:linear-gradient(145deg,#FF8C00,#E65000)">
+<svg width="34" height="34" viewBox="0 0 100 100">
+<polygon points="50,8 93,88 7,88" fill="rgba(255,255,255,.9)"/>
+<rect x="32" y="64" width="36" height="20" rx="5" fill="#FF8C00"/>
+<rect x="40" y="52" width="20" height="14" rx="3" fill="#FF8C00"/>
+<circle cx="50" cy="40" r="13" fill="#FF8C00"/>
+<circle cx="50" cy="40" r="5" fill="white"/>
+</svg>
+</div>
+<div class="app-name">VLC Player</div>
+<div class="app-feats">
+<div class="app-feat"><i class="fas fa-check-circle"></i> HEVC / H.265</div>
+<div class="app-feat"><i class="fas fa-check-circle"></i> All Codecs</div>
+</div>
+<button class="btn-open"><i class="fas fa-external-link-alt"></i> Open Now</button>
+</div>
+<!-- MX Player -->
+<div class="player-card pc-mx" onclick="openIn('mx')">
+<div class="app-icon" style="background:linear-gradient(145deg,#1976D2,#0D47A1)">
+<svg width="34" height="34" viewBox="0 0 100 100">
+<circle cx="50" cy="50" r="36" fill="rgba(255,255,255,.1)"/>
+<polygon points="37,28 74,50 37,72" fill="white"/>
+</svg>
+</div>
+<div class="app-name">MX Player</div>
+<div class="app-feats">
+<div class="app-feat"><i class="fas fa-check-circle"></i> Multi-Audio</div>
+<div class="app-feat"><i class="fas fa-check-circle"></i> HW Decode</div>
+</div>
+<button class="btn-open"><i class="fas fa-external-link-alt"></i> Open Now</button>
+</div>
+<!-- PlayIt -->
+<div class="player-card pc-pi" onclick="openIn('playit')">
+<div class="app-icon" style="background:linear-gradient(145deg,#00B894,#007A60)">
+<svg width="34" height="34" viewBox="0 0 100 100">
+<circle cx="50" cy="50" r="36" fill="rgba(255,255,255,.1)"/>
+<circle cx="50" cy="50" r="20" fill="rgba(255,255,255,.12)"/>
+<polygon points="41,33 67,50 41,67" fill="white"/>
+</svg>
+</div>
+<div class="app-name">PlayIt</div>
+<div class="app-feats">
+<div class="app-feat"><i class="fas fa-check-circle"></i> Fast Stream</div>
+<div class="app-feat"><i class="fas fa-check-circle"></i> Smooth HW</div>
+</div>
+<button class="btn-open"><i class="fas fa-external-link-alt"></i> Open Now</button>
+</div>
+</div>
+
+</div>
+</div>
+<!-- Toast -->
+<div id="toast">
+<div class="toast-icon-wrap" id="t-ico-wrap" style="background:rgba(255,140,0,.15)">
+<span id="t-ico">🎬</span>
+</div>
+<div class="t-body">
+<div class="t-title" id="t-title">Opening player…</div>
+<div class="t-sub" id="t-sub">Install the app if it doesn't launch automatically.</div>
+</div>
+<button id="t-x" onclick="closeToast()"><i class="fas fa-xmark"></i></button>
+</div>
+<script>
+const VIDEO_URL = "/watch/{file_id}/{filename}";
+const CIRC = 2 * Math.PI * 80; // 502.65
+/* ─── COUNTDOWN ─── */
+document.getElementById("ps").classList.add("show");\ninitPlayer();\nfunction ss(id, cls) {{
+const el = document.getElementById(id);
+el.className = 'cd-step ' + cls;
+}}
+/* ─── PLAYER ─── */
 const vid = document.getElementById('vid');
 const vf = document.getElementById('vf');
 const pbtn = document.getElementById('pbtn');
@@ -1794,6 +2465,10 @@ function closeToast() {{ document.getElementById('toast').classList.remove('show
             tb = traceback.format_exc()
             logger.error(f"Stream Error:\n{tb}")
             return web.Response(status=500, text=f"Streaming Failed!\n\nReason: {e}\n\nTraceback:\n{tb}")
+
+
+    
+
 
 
     async def thumb_handler(self, request):
