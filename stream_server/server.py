@@ -63,7 +63,7 @@ class StreamServer:
         self.app.router.add_post('/api/queue/clear_all', self.api_clear_all)
         self.app.router.add_get('/watch/{file_id}/{filename}', self.stream_handler)
         self.app.router.add_get('/player/{file_id}/{filename}', self.player_page)
-        app.router.add_get('/embed/{file_id}/{filename}', self.embed_player)
+        self.app.router.add_get('/embed/{file_id}/{filename}', self.embed_player)
         self.app.router.add_get('/thumb/{file_id}', self.thumb_handler)
 
     def check_admin(self, request):
