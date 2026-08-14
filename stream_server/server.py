@@ -19,6 +19,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 db_client = AsyncIOMotorClient(MONGO_URI)
 movies_col = db_client['telegram_bot']['movies']
 scrape_queue = db_client['cinesearch_db']['scrape_queue']
+published_col = db_client['telegram_bot']['published_movies']
 
 USERBOT_SESSION = os.environ.get('USERBOT_SESSION')
 
@@ -52,6 +53,10 @@ class StreamServer:
         self.app.router.add_get('/api/queue/failed', self.api_failed)
         self.app.router.add_get('/api/queue/completed', self.api_completed)
         self.app.router.add_get('/api/movies', self.api_movies)
+        self.app.router.add_get('/api/published', self.api_published_admin)
+        self.app.router.add_post('/api/published', self.api_publish)
+        self.app.router.add_post('/api/published/delete', self.api_delete_published)
+        self.app.router.add_get('/api/app/movies', self.api_app_movies)
         self.app.router.add_post('/api/queue/retry', self.api_retry)
         self.app.router.add_post('/api/queue/delete', self.api_delete)
         self.app.router.add_post('/api/queue/retry_all', self.api_retry_all)
@@ -115,6 +120,56 @@ class StreamServer:
         except Exception as e:
             return web.Response(status=500, text=str(e))
         
+
+    async def api_published_admin(self, request):
+        if not self.check_admin(request): return web.Response(status=401)
+        cursor = published_col.find({}).sort('_id', -1)
+        movies = []
+        async for doc in cursor:
+            doc['_id'] = str(doc['_id'])
+            movies.append(doc)
+        return web.json_response(movies)
+
+    async def api_publish(self, request):
+        if not self.check_admin(request): return web.Response(status=401)
+        data = await request.json()
+        
+        movie_doc = {
+            "title": data.get("title"),
+            "description": data.get("description", ""),
+            "poster": data.get("poster", ""),
+            "links": data.get("links", []) # [{"quality": "1080p", "file_id": "..."}]
+        }
+        
+        if data.get("id"):
+            from bson.objectid import ObjectId
+            await published_col.update_one({"_id": ObjectId(data["id"])}, {"": movie_doc})
+        else:
+            await published_col.insert_one(movie_doc)
+            
+        return web.Response(text='OK')
+
+    async def api_delete_published(self, request):
+        if not self.check_admin(request): return web.Response(status=401)
+        data = await request.json()
+        from bson.objectid import ObjectId
+        await published_col.delete_one({'_id': ObjectId(data['id'])})
+        return web.Response(text='OK')
+
+    # PUBLIC ROUTE FOR THE CONSUMER APP
+    async def api_app_movies(self, request):
+        # Allow CORS for the app
+        headers = {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+        }
+        cursor = published_col.find({}).sort('_id', -1)
+        movies = []
+        async for doc in cursor:
+            doc['_id'] = str(doc['_id'])
+            movies.append(doc)
+        return web.json_response(movies, headers=headers)
+
     async def api_retry(self, request):
         if not self.check_admin(request): return web.Response(status=401)
         data = await request.json()

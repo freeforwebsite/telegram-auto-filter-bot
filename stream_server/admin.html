@@ -142,6 +142,7 @@
                 <div class="tab active" onclick="switchTab('failed')">Failed Queue</div>
                 <div class="tab" onclick="switchTab('completed')">Completed Queue</div>
                 <div class="tab" onclick="switchTab('database')">Movie Database</div>
+                <div class="tab" onclick="switchTab('publisher')" style="color: #f59e0b;">📱 App Publisher</div>
             </div>
 
             <!-- FAILED TAB -->
@@ -171,6 +172,60 @@
                         <thead><tr><th>S.No</th><th>Movie Name</th><th>Status</th><th>Completed On</th></tr></thead>
                         <tbody id="completed-table-body"></tbody>
                     </table>
+                </div>
+            </div>
+
+            
+            <!-- PUBLISHER TAB -->
+            <div id="tab-publisher" class="tab-content">
+                <div class="panel-header">
+                    <div style="color: var(--text-muted); font-size: 0.875rem;">Manage movies for the Consumer App</div>
+                    <button class="btn-primary" onclick="openPublishModal()">+ Publish New Movie</button>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Poster</th><th>Title</th><th>Available Links</th><th style="text-align: right;">Actions</th></tr></thead>
+                        <tbody id="publisher-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PUBLISH MODAL -->
+            <div id="publish-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.8); z-index:10000; justify-content:center; align-items:center;">
+                <div class="panel" style="width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto;">
+                    <h2 id="modal-title" style="margin-bottom: 1.5rem;">Publish Movie</h2>
+                    
+                    <input type="hidden" id="pub-id">
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display:block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.875rem;">Movie Title</label>
+                        <input type="text" id="pub-title" placeholder="e.g. Leo (2023)" style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: white;">
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display:block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.875rem;">Poster URL (TMDB Image Link)</label>
+                        <input type="text" id="pub-poster" placeholder="https://image.tmdb.org/..." style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: white;">
+                    </div>
+
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display:block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.875rem;">Description</label>
+                        <textarea id="pub-desc" rows="3" style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: white; resize: vertical;"></textarea>
+                    </div>
+
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.875rem;">
+                            <span>Streaming Links (File IDs)</span>
+                            <button type="button" class="btn-primary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="addLinkRow()">+ Add Quality</button>
+                        </label>
+                        <div id="pub-links-container" style="display:flex; flex-direction: column; gap: 0.5rem;">
+                            <!-- Link rows go here -->
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                        <button type="button" style="background: transparent; border: 1px solid var(--border);" onclick="closePublishModal()">Cancel</button>
+                        <button type="button" class="btn-primary" onclick="savePublishedMovie()">Save & Publish</button>
+                    </div>
                 </div>
             </div>
 
@@ -271,6 +326,8 @@
                         tbody.appendChild(tr);
                     });
                 }
+            } else if (tabId === "publisher") {
+                loadPublisherPage();
             } else if (tabId === "database") {
                 loadDatabasePage();
             }
@@ -384,6 +441,112 @@
             toast.style.borderColor = isError ? "var(--danger)" : "var(--border)";
             toast.classList.add("show");
             setTimeout(() => toast.classList.remove("show"), 3000);
+        }
+
+        
+        async function loadPublisherPage() {
+            const res = await fetch(API_URL + "/published");
+            const data = await res.json();
+            const tbody = document.getElementById("publisher-table-body");
+            tbody.innerHTML = "";
+            
+            if (data.length === 0) {
+                tbody.innerHTML = "<tr><td colspan='4' style='text-align: center; color: var(--text-muted);'>No published movies yet. Create one!</td></tr>";
+            } else {
+                data.forEach(movie => {
+                    const tr = document.createElement("tr");
+                    
+                    let thumbHtml = "<div class='no-poster'>No Image</div>";
+                    if(movie.poster) {
+                        thumbHtml = "<img src='" + movie.poster + "' class='movie-poster' onerror='this.outerHTML="<div class=\"no-poster\">No Image</div>"' />";
+                    }
+                    
+                    let linksHtml = movie.links.map(l => "<span class='badge database'>" + l.quality + "</span>").join(" ");
+                    
+                    tr.innerHTML = "<td class='poster-cell'>" + thumbHtml + "</td>" +
+                                   "<td><div class='movie-name'>" + movie.title + "</div></td>" + 
+                                   "<td>" + linksHtml + "</td>" + 
+                                   "<td style='text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end; align-items: center; height: 100px;'>" + 
+                                   "<button class='btn-danger' style='padding: 0.25rem 0.5rem; font-size: 0.75rem;' onclick='deletePublished("" + movie._id + "")'>Delete</button>" + 
+                                   "</td>";
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+
+        function openPublishModal() {
+            document.getElementById('pub-id').value = '';
+            document.getElementById('pub-title').value = '';
+            document.getElementById('pub-poster').value = '';
+            document.getElementById('pub-desc').value = '';
+            document.getElementById('pub-links-container').innerHTML = '';
+            addLinkRow();
+            document.getElementById('publish-modal').style.display = 'flex';
+        }
+        
+        function closePublishModal() {
+            document.getElementById('publish-modal').style.display = 'none';
+        }
+        
+        function addLinkRow(quality = '1080p', file_id = '') {
+            const container = document.getElementById('pub-links-container');
+            const row = document.createElement('div');
+            row.style = 'display: flex; gap: 0.5rem;';
+            row.className = 'link-row';
+            row.innerHTML = "<input type='text' class='l-quality' placeholder='Quality (e.g. 1080p)' value='" + quality + "' style='width: 30%; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: white;'>" +
+                            "<input type='text' class='l-fileid' placeholder='Paste File_ID here' value='" + file_id + "' style='flex: 1; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: white;'>" +
+                            "<button type='button' class='btn-danger' style='padding: 0 0.5rem;' onclick='this.parentElement.remove()'>X</button>";
+            container.appendChild(row);
+        }
+
+        async function savePublishedMovie() {
+            const id = document.getElementById('pub-id').value;
+            const title = document.getElementById('pub-title').value;
+            const poster = document.getElementById('pub-poster').value;
+            const desc = document.getElementById('pub-desc').value;
+            
+            const linkRows = document.querySelectorAll('.link-row');
+            const links = [];
+            linkRows.forEach(row => {
+                const q = row.querySelector('.l-quality').value;
+                const f = row.querySelector('.l-fileid').value;
+                if(q && f) links.push({quality: q, file_id: f});
+            });
+            
+            if(!title || links.length === 0) {
+                alert('Title and at least one streaming link are required!');
+                return;
+            }
+            
+            try {
+                const res = await fetch(API_URL + "/published", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({id: id, title: title, poster: poster, description: desc, links: links})
+                });
+                if(res.ok) {
+                    showToast("Published Successfully!");
+                    closePublishModal();
+                    loadPublisherPage();
+                } else {
+                    showToast("Error publishing", true);
+                }
+            } catch(e) { showToast("Network Error", true); }
+        }
+        
+        async function deletePublished(id) {
+            if(!confirm("Are you sure you want to delete this published movie?")) return;
+            try {
+                const res = await fetch(API_URL + "/published/delete", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({id: id})
+                });
+                if(res.ok) {
+                    showToast("Deleted!");
+                    loadPublisherPage();
+                }
+            } catch(e) { showToast("Error", true); }
         }
 
         // Init
