@@ -2418,7 +2418,10 @@ function closeToast() {{ document.getElementById('toast').classList.remove('show
                 'Content-Type': mime_type,
                 'Accept-Ranges': 'bytes',
                 'Content-Disposition': f'inline; filename="{filename}"',
-                'Cross-Origin-Resource-Policy': 'cross-origin'
+                'Cross-Origin-Resource-Policy': 'cross-origin',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+                'Access-Control-Allow-Headers': 'Range, Accept, Content-Type'
             }
             
             if file_size:
