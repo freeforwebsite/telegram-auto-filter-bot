@@ -125,9 +125,8 @@ class StreamServer:
             
             query = {}
             if search_query:
-                # Basic case-insensitive regex search on file_name or caption
                 import re
-                query = {"": [{"file_name": {"": re.escape(search_query), "": "i"}}, {"caption": {"": re.escape(search_query), "": "i"}}]}
+                query = {"$or": [{"file_name": {"$regex": re.escape(search_query), "$options": "i"}}, {"caption": {"$regex": re.escape(search_query), "$options": "i"}}]}
                 
             cursor = movies_col.find(query).sort('_id', -1).skip(skip).limit(limit)
             movies = []
