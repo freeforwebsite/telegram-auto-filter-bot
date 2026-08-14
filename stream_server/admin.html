@@ -339,8 +339,9 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
         }
 
-        async function loadDatabasePage() {
-            const res = await fetch(API_URL + "/movies?page=" + dbPage);
+                async function loadDatabasePage() {
+            const searchQ = document.getElementById('db-search') ? document.getElementById('db-search').value : '';
+            const res = await fetch(API_URL + "/movies?page=" + dbPage + "&search=" + encodeURIComponent(searchQ));
             const data = await res.json();
             const tbody = document.getElementById("database-table-body");
             tbody.innerHTML = "";
@@ -350,23 +351,25 @@
             document.getElementById("btn-next-page").disabled = (data.length < 50);
 
             if (data.length === 0) {
-                tbody.innerHTML = "<tr><td colspan='5' style='text-align: center; color: var(--text-muted);'>No movies in database.</td></tr>";
+                tbody.innerHTML = "<tr><td colspan='5' style='text-align: center; color: var(--text-muted);'>No movies found.</td></tr>";
             } else {
                 let startNo = (dbPage - 1) * 50;
                 data.forEach((movie, index) => {
                     const tr = document.createElement("tr");
                     let sizeStr = movie.file_size ? formatBytes(movie.file_size) : "Unknown";
-                    // Fallback image if TMDB fails
+                    
                     let thumbHtml = "<div class='no-poster'>No Image</div>";
                     if(movie.file_id) {
-                        thumbHtml = "<img src='/thumb/" + movie.file_id + "' class='movie-poster' onerror='this.outerHTML=\"<div class=\\\"no-poster\\\">No Image</div>\"' />";
+                        thumbHtml = "<img src='/thumb/" + movie.file_id + "' class='movie-poster' onerror='this.outerHTML=\"<div class=\\"no-poster\\">No Image</div>\"' />";
                     }
+                    
+                    let copyBtn = "<button class='btn-primary' style='padding: 0.25rem 0.5rem; font-size: 0.75rem;' onclick='navigator.clipboard.writeText(\"" + (movie.file_id || '') + "\"); showToast(\"File ID Copied!\");'>Copy ID</button>";
                     
                     tr.innerHTML = "<td>" + (startNo + index + 1) + "</td>" +
                                    "<td class='poster-cell'>" + thumbHtml + "</td>" +
                                    "<td><div class='movie-name'>" + (movie.file_name || "Unknown") + "</div><div class='movie-sub'>" + (movie.caption ? movie.caption.substring(0,60) + "..." : "") + "</div></td>" + 
                                    "<td><span class='badge database'>" + sizeStr + "</span></td>" + 
-                                   "<td style='color: var(--text-muted);'>" + (movie.source_message_id || "-") + "</td>";
+                                   "<td style='display:flex; gap: 0.5rem; align-items:center; height: 100px;'>" + copyBtn + "</td>";
                     tbody.appendChild(tr);
                 });
             }

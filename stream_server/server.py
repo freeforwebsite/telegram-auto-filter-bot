@@ -109,9 +109,17 @@ class StreamServer:
         if not self.check_admin(request): return web.Response(status=401)
         try:
             page = int(request.query.get('page', 1))
+            search_query = request.query.get('search', '').strip()
             limit = 50
             skip = (page - 1) * limit
-            cursor = movies_col.find({}).sort('_id', -1).skip(skip).limit(limit)
+            
+            query = {}
+            if search_query:
+                # Basic case-insensitive regex search on file_name or caption
+                import re
+                query = {"": [{"file_name": {"": re.escape(search_query), "": "i"}}, {"caption": {"": re.escape(search_query), "": "i"}}]}
+                
+            cursor = movies_col.find(query).sort('_id', -1).skip(skip).limit(limit)
             movies = []
             async for doc in cursor:
                 doc['_id'] = str(doc['_id'])
