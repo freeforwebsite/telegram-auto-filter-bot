@@ -18,6 +18,7 @@ MONGO_URI = os.environ.get('MONGODB_URI')
 from motor.motor_asyncio import AsyncIOMotorClient
 db_client = AsyncIOMotorClient(MONGO_URI)
 movies_col = db_client['telegram_bot']['movies']
+scrape_queue = db_client['cinesearch_db']['scrape_queue']
 
 USERBOT_SESSION = os.environ.get('USERBOT_SESSION')
 
@@ -46,9 +47,70 @@ class StreamServer:
         self.client = client
         self.app = web.Application()
         self.app.router.add_get('/', self.health_check)
+        self.app.router.add_get('/admin', self.admin_page)
+        self.app.router.add_get('/api/queue/stats', self.api_stats)
+        self.app.router.add_get('/api/queue/failed', self.api_failed)
+        self.app.router.add_post('/api/queue/retry', self.api_retry)
+        self.app.router.add_post('/api/queue/delete', self.api_delete)
+        self.app.router.add_post('/api/queue/retry_all', self.api_retry_all)
+        self.app.router.add_post('/api/queue/clear_all', self.api_clear_all)
         self.app.router.add_get('/watch/{file_id}/{filename}', self.stream_handler)
         self.app.router.add_get('/player/{file_id}/{filename}', self.player_page)
         self.app.router.add_get('/thumb/{file_id}', self.thumb_handler)
+
+
+    def check_admin(self, request):
+        if request.cookies.get('admin_pwd') != 'admin123':
+            return False
+        return True
+
+    async def admin_page(self, request):
+        try:
+            with open(os.path.join(os.path.dirname(__file__), 'admin.html'), 'r') as f:
+                return web.Response(text=f.read(), content_type='text/html')
+        except Exception as e:
+            return web.Response(text=str(e), status=500)
+
+    async def api_stats(self, request):
+        if not self.check_admin(request): return web.Response(status=401)
+        pending = await scrape_queue.count_documents({'status': 'pending'})
+        completed = await scrape_queue.count_documents({'status': 'completed'})
+        failed = await scrape_queue.count_documents({'status': 'failed'})
+        return web.json_response({'pending': pending, 'completed': completed, 'failed': failed})
+
+    async def api_failed(self, request):
+        if not self.check_admin(request): return web.Response(status=401)
+        cursor = scrape_queue.find({'status': 'failed'}).sort('added_on', -1).limit(500)
+        failed = []
+        async for doc in cursor:
+            doc['_id'] = str(doc['_id'])
+            doc['added_on'] = doc.get('added_on', '').isoformat() if hasattr(doc.get('added_on'), 'isoformat') else str(doc.get('added_on', ''))
+            failed.append(doc)
+        return web.json_response(failed)
+        
+    async def api_retry(self, request):
+        if not self.check_admin(request): return web.Response(status=401)
+        data = await request.json()
+        from bson.objectid import ObjectId
+        await scrape_queue.update_one({'_id': ObjectId(data['id'])}, {'': {'status': 'pending'}})
+        return web.Response(text='OK')
+
+    async def api_delete(self, request):
+        if not self.check_admin(request): return web.Response(status=401)
+        data = await request.json()
+        from bson.objectid import ObjectId
+        await scrape_queue.delete_one({'_id': ObjectId(data['id'])})
+        return web.Response(text='OK')
+
+    async def api_retry_all(self, request):
+        if not self.check_admin(request): return web.Response(status=401)
+        await scrape_queue.update_many({'status': 'failed'}, {'': {'status': 'pending'}})
+        return web.Response(text='OK')
+
+    async def api_clear_all(self, request):
+        if not self.check_admin(request): return web.Response(status=401)
+        await scrape_queue.delete_many({'status': 'failed'})
+        return web.Response(text='OK')
 
     async def health_check(self, request):
         return web.Response(text="Streaming Server is Running!")
