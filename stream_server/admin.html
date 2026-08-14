@@ -458,7 +458,7 @@
                     
                     let thumbHtml = "<div class='no-poster'>No Image</div>";
                     if(movie.poster) {
-                        thumbHtml = "<img src='" + movie.poster + "' class='movie-poster' onerror='this.outerHTML="<div class=\"no-poster\">No Image</div>"' />";
+                        thumbHtml = "<img src='" + movie.poster + "' class='movie-poster' onerror='this.outerHTML=\"<div class=\\\"no-poster\\\">No Image</div>\"' />";
                     }
                     
                     let linksHtml = movie.links.map(l => "<span class='badge database'>" + l.quality + "</span>").join(" ");
@@ -467,7 +467,7 @@
                                    "<td><div class='movie-name'>" + movie.title + "</div></td>" + 
                                    "<td>" + linksHtml + "</td>" + 
                                    "<td style='text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end; align-items: center; height: 100px;'>" + 
-                                   "<button class='btn-danger' style='padding: 0.25rem 0.5rem; font-size: 0.75rem;' onclick='deletePublished("" + movie._id + "")'>Delete</button>" + 
+                                   "<button class='btn-danger' style='padding: 0.25rem 0.5rem; font-size: 0.75rem;' onclick='deletePublished(\"" + movie._id + "\")'>Delete</button>" + 
                                    "</td>";
                     tbody.appendChild(tr);
                 });
