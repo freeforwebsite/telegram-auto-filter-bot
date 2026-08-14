@@ -1450,7 +1450,7 @@ linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
 background-size:40px 40px;
 }}
 /* ─── LAYOUT ─── */
-.page{{position:relative;z-index:1;max-width:960px;margin:0 auto;padding:0 16px 60px}}
+.page{{position:relative;z-index:1;width:100%;height:100vh;margin:0;padding:0;display:flex;align-items:center;justify-content:center;}}
 /* ─── NAVBAR ─── */
 nav{{
 display:flex;align-items:center;justify-content:space-between;
@@ -1573,12 +1573,12 @@ box-shadow:0 4px 20px var(--glow-purple);
 #ps{{display:none}}
 #ps.show{{display:block;animation:fadeUp .6s ease both}}
 /* ─── VIDEO PLAYER ─── */
-.video-section{
+.video-section{{
 border-radius: 0;
 border: none;
 width: 100%;
 max-height: 100vh;
-{
+
 background:var(--card);
 border-radius:24px;
 overflow:hidden;
@@ -1727,7 +1727,7 @@ cursor:pointer;color:var(--text2);transition:all .15s;
 }}
 .si:hover,.si.sel{{background:rgba(123,92,245,.15);color:var(--purple2)}}
 /* ─── INFO CARD BELOW PLAYER ─── */
-.info-card{display:none;{
+.info-card{{display:none;
 display:flex;flex-wrap:wrap;gap:16px;align-items:center;
 background:var(--card);border:1px solid var(--border);
 border-radius:20px;padding:18px 22px;
@@ -1770,7 +1770,7 @@ background-size:200% 100%;animation:shimmer 2.5s ease-in-out infinite;
 .btn-download:hover{{transform:translateY(-3px);box-shadow:0 12px 40px var(--glow-purple)}}
 @keyframes shimmer{{0%{{background-position:-200% 0}}100%{{background-position:200% 0}}}}
 /* ─── EXTERNAL PLAYERS ─── */
-.section-title{display:none;{
+.section-title{{display:none;
 display:flex;align-items:center;gap:12px;
 margin-bottom:16px;
 }}
@@ -1785,7 +1785,7 @@ padding:4px 12px;border-radius:20px;
 background:rgba(255,140,66,.15);color:var(--orange);
 border:1px solid rgba(255,140,66,.3);
 }}
-.players-grid{display:none;{
+.players-grid{{display:none;
 display:grid;grid-template-columns:repeat(3,1fr);gap:14px;
 margin-bottom:24px;
 }}
@@ -1927,7 +1927,7 @@ background-size:200% 100%;animation:shimmer 2s ease-in-out 1s infinite;
 .btn-join:hover{{transform:translateY(-3px);box-shadow:0 12px 40px rgba(34,158,217,.5)}}
 .btn-join i{{font-size:16px}}
 /* ─── STATS ROW ─── */
-.stats-row{display:none;{
+.stats-row{{display:none;
 display:grid;grid-template-columns:repeat(4,1fr);gap:12px;
 margin-bottom:24px;
 }}
@@ -1984,8 +1984,8 @@ transition:all .2s}}
 #t-x:hover{{background:rgba(255,255,255,.15);color:#fff}}
 /* ─── RESPONSIVE ─── */
 @media(max-width:600px){{
-.stats-row{display:none;{grid-template-columns:repeat(2,1fr)}}
-.players-grid{display:none;{grid-template-columns:repeat(3,1fr);gap:10px}}
+.stats-row{{display:none;grid-template-columns:repeat(2,1fr)}}
+.players-grid{{display:none;grid-template-columns:repeat(3,1fr);gap:10px}}
 .app-icon{{width:52px;height:52px;border-radius:16px;font-size:24px}}
 .app-feats{{display:none}}
 .vol-r{{width:48px}}
