@@ -1379,7 +1379,7 @@ function closeToast() {{ document.getElementById('toast').classList.remove('show
 
     
 
-async def embed_player(self, request):
+    async def embed_player(self, request):
         file_id = request.match_info['file_id']
         filename = request.match_info['filename']
         
