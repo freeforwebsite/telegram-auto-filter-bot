@@ -49,6 +49,8 @@ class StreamServer:
         self.app = web.Application()
         self.app.router.add_get('/', self.health_check)
         self.app.router.add_get('/admin', self.admin_page)
+        self.app.router.add_get('/style.css', self.admin_style)
+        self.app.router.add_get('/app.js', self.admin_js)
         self.app.router.add_get('/api/queue/stats', self.api_stats)
         self.app.router.add_get('/api/queue/failed', self.api_failed)
         self.app.router.add_get('/api/queue/completed', self.api_completed)
@@ -82,8 +84,22 @@ class StreamServer:
 
     async def admin_page(self, request):
         try:
-            with open(os.path.join(os.path.dirname(__file__), 'admin.html'), 'r') as f:
+            with open(os.path.join(os.path.dirname(__file__), 'admin_webapp', 'index.html'), 'r') as f:
                 return web.Response(text=f.read(), content_type='text/html')
+        except Exception as e:
+            return web.Response(text=str(e), status=500)
+
+    async def admin_style(self, request):
+        try:
+            with open(os.path.join(os.path.dirname(__file__), 'admin_webapp', 'style.css'), 'r') as f:
+                return web.Response(text=f.read(), content_type='text/css')
+        except Exception as e:
+            return web.Response(text=str(e), status=500)
+
+    async def admin_js(self, request):
+        try:
+            with open(os.path.join(os.path.dirname(__file__), 'admin_webapp', 'app.js'), 'r') as f:
+                return web.Response(text=f.read(), content_type='application/javascript')
         except Exception as e:
             return web.Response(text=str(e), status=500)
 
