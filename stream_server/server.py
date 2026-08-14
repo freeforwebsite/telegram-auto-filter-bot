@@ -50,6 +50,8 @@ class StreamServer:
         self.app.router.add_get('/admin', self.admin_page)
         self.app.router.add_get('/api/queue/stats', self.api_stats)
         self.app.router.add_get('/api/queue/failed', self.api_failed)
+        self.app.router.add_get('/api/queue/completed', self.api_completed)
+        self.app.router.add_get('/api/movies', self.api_movies)
         self.app.router.add_post('/api/queue/retry', self.api_retry)
         self.app.router.add_post('/api/queue/delete', self.api_delete)
         self.app.router.add_post('/api/queue/retry_all', self.api_retry_all)
@@ -57,7 +59,6 @@ class StreamServer:
         self.app.router.add_get('/watch/{file_id}/{filename}', self.stream_handler)
         self.app.router.add_get('/player/{file_id}/{filename}', self.player_page)
         self.app.router.add_get('/thumb/{file_id}', self.thumb_handler)
-
 
     def check_admin(self, request):
         if request.cookies.get('admin_pwd') != 'admin123':
@@ -76,7 +77,8 @@ class StreamServer:
         pending = await scrape_queue.count_documents({'status': 'pending'})
         completed = await scrape_queue.count_documents({'status': 'completed'})
         failed = await scrape_queue.count_documents({'status': 'failed'})
-        return web.json_response({'pending': pending, 'completed': completed, 'failed': failed})
+        db_total = await movies_col.count_documents({})
+        return web.json_response({'pending': pending, 'completed': completed, 'failed': failed, 'db_total': db_total})
 
     async def api_failed(self, request):
         if not self.check_admin(request): return web.Response(status=401)
@@ -87,12 +89,37 @@ class StreamServer:
             doc['added_on'] = doc.get('added_on', '').isoformat() if hasattr(doc.get('added_on'), 'isoformat') else str(doc.get('added_on', ''))
             failed.append(doc)
         return web.json_response(failed)
+
+    async def api_completed(self, request):
+        if not self.check_admin(request): return web.Response(status=401)
+        cursor = scrape_queue.find({'status': 'completed'}).sort('added_on', -1).limit(500)
+        completed = []
+        async for doc in cursor:
+            doc['_id'] = str(doc['_id'])
+            doc['added_on'] = doc.get('added_on', '').isoformat() if hasattr(doc.get('added_on'), 'isoformat') else str(doc.get('added_on', ''))
+            completed.append(doc)
+        return web.json_response(completed)
+
+    async def api_movies(self, request):
+        if not self.check_admin(request): return web.Response(status=401)
+        try:
+            page = int(request.query.get('page', 1))
+            limit = 50
+            skip = (page - 1) * limit
+            cursor = movies_col.find({}).sort('_id', -1).skip(skip).limit(limit)
+            movies = []
+            async for doc in cursor:
+                doc['_id'] = str(doc['_id'])
+                movies.append(doc)
+            return web.json_response(movies)
+        except Exception as e:
+            return web.Response(status=500, text=str(e))
         
     async def api_retry(self, request):
         if not self.check_admin(request): return web.Response(status=401)
         data = await request.json()
         from bson.objectid import ObjectId
-        await scrape_queue.update_one({'_id': ObjectId(data['id'])}, {'': {'status': 'pending'}})
+        await scrape_queue.update_one({'_id': ObjectId(data['id'])}, {'$set': {'status': 'pending'}})
         return web.Response(text='OK')
 
     async def api_delete(self, request):
@@ -104,7 +131,7 @@ class StreamServer:
 
     async def api_retry_all(self, request):
         if not self.check_admin(request): return web.Response(status=401)
-        await scrape_queue.update_many({'status': 'failed'}, {'': {'status': 'pending'}})
+        await scrape_queue.update_many({'status': 'failed'}, {'$set': {'status': 'pending'}})
         return web.Response(text='OK')
 
     async def api_clear_all(self, request):
