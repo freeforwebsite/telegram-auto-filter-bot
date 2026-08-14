@@ -233,6 +233,10 @@
             <div id="tab-database" class="tab-content">
                 <div class="panel-header">
                     <div style="color: var(--text-muted); font-size: 0.875rem;">Live MongoDB View</div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="text" id="db-search" placeholder="Search movies..." style="padding: 0.5rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: white; width: 250px;" onkeyup="if(event.key==='Enter'){dbPage=1;loadDatabasePage();}">
+                        <button class="btn-primary" onclick="dbPage=1;loadDatabasePage()">Search</button>
+                    </div>
                 </div>
                 <div class="table-container">
                     <table>
