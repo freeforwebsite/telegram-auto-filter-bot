@@ -62,9 +62,18 @@ class StreamServer:
         self.app.router.add_post('/api/queue/retry_all', self.api_retry_all)
         self.app.router.add_post('/api/queue/clear_all', self.api_clear_all)
         self.app.router.add_get('/watch/{file_id}/{filename}', self.stream_handler)
+        self.app.router.add_options('/watch/{file_id}/{filename}', self.options_handler)
         self.app.router.add_get('/player/{file_id}/{filename}', self.player_page)
         self.app.router.add_get('/embed/{file_id}/{filename}', self.embed_player)
         self.app.router.add_get('/thumb/{file_id}', self.thumb_handler)
+
+    async def options_handler(self, request):
+        headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+            'Access-Control-Allow-Headers': 'Range, Accept, Content-Type'
+        }
+        return web.Response(status=204, headers=headers)
 
     def check_admin(self, request):
         if request.cookies.get('admin_pwd') != 'admin123':
