@@ -75,11 +75,37 @@ function renderStorefrontRows() {
                 <input type="text" class="row-title-input" value="${row.title}" onchange="updateRowTitle('${row.id}', this.value)">
                 <button class="icon-btn" style="color: #ff4757; border-color: rgba(255,71,87,0.2)" onclick="deleteRow('${row.id}')"><i class='bx bx-trash'></i></button>
             </div>
-            <div class="row-movies-grid">
+            <div class="row-movies-grid" id="grid-${row.id}">
                 ${moviesHtml}
             </div>
         `;
         container.appendChild(rowEl);
+        
+        // Initialize Drag and Drop Sorting for this row
+        const gridEl = document.getElementById(`grid-${row.id}`);
+        if (typeof Sortable !== 'undefined') {
+            new Sortable(gridEl, {
+                animation: 150,
+                filter: '.add-movie-card',
+                onEnd: function (evt) {
+                    const targetRow = storefrontRows.find(r => r.id === row.id);
+                    if (!targetRow) return;
+                    
+                    // The 'add movie' card is at the end, if we drag past it, handle gracefully
+                    let oldIndex = evt.oldIndex;
+                    let newIndex = evt.newIndex;
+                    
+                    if (oldIndex >= targetRow.movies.length || newIndex >= targetRow.movies.length) {
+                        renderStorefrontRows();
+                        return;
+                    }
+
+                    // Reorder the array in memory
+                    const movedItem = targetRow.movies.splice(oldIndex, 1)[0];
+                    targetRow.movies.splice(newIndex, 0, movedItem);
+                }
+            });
+        }
     });
 }
 
