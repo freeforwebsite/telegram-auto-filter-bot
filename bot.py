@@ -204,9 +204,10 @@ async def index_movie_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         
     success = add_movie(file_id, file_name, caption, channel_chat_id, channel_message_id, file.file_size)
     if success:
-        await msg.reply_text(f"✅ **Saved to Database!**\n\nName: `{file_name}`", parse_mode="Markdown")
+        await msg.reply_text(f"✅ **Saved to Database!**\n\nName: `{file_name}`\n\n**File ID** (Click to copy): `{file_id}`", parse_mode="Markdown")
     else:
-        await msg.reply_text("⚠️ This file is already in the database.")
+        # Even if it's already in the DB, give them the file_id so they can still use it!
+        await msg.reply_text(f"⚠️ This file is already in the database.\n\n**File ID** (Click to copy): `{file_id}`", parse_mode="Markdown")
 
 BOT_USERNAME = None
 
