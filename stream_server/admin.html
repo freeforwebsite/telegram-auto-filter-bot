@@ -97,6 +97,7 @@
         .tab-content { display: none; }
         .tab-content.active { display: block; }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 </head>
 <body>
 
@@ -611,8 +612,17 @@
             } catch(e) { showToast("Error", true); }
         }
 
+        
         // Init
-        document.addEventListener("DOMContentLoaded", loadData);
+        document.addEventListener("DOMContentLoaded", () => {
+            loadData();
+            if (typeof Sortable !== 'undefined') {
+                new Sortable(document.getElementById('pub-links-container'), {
+                    animation: 150,
+                    handle: '.link-row'
+                });
+            }
+        });
     </script>
 </body>
 </html>
