@@ -534,7 +534,7 @@
             
             document.getElementById('pub-links-container').innerHTML = '';
             if (movie.links && movie.links.length > 0) {
-                movie.links.forEach(l => addLinkRow(l.quality, l.file_id, l.season || '', l.episode || ''));
+                movie.links.forEach(l => addLinkRow(l.quality, l.file_id, l.season || '', l.episode || '', l.name || ''));
             } else {
                 addLinkRow();
             }
@@ -542,14 +542,15 @@
             document.getElementById('publish-modal').style.display = 'flex';
         }
         
-        function addLinkRow(quality = '1080p', file_id = '', season = '', episode = '') {
+        function addLinkRow(quality = '1080p', file_id = '', season = '', episode = '', name = '') {
             const container = document.getElementById('pub-links-container');
             const row = document.createElement('div');
             row.style = 'display: flex; gap: 0.5rem;';
             row.className = 'link-row';
-            row.innerHTML = "<input type='text' class='l-season' placeholder='Season (e.g. 1)' value='" + season + "' style='width: 15%; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: white;'>" +
-                            "<input type='text' class='l-episode' placeholder='Ep (e.g. 1)' value='" + episode + "' style='width: 15%; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: white;'>" +
-                            "<input type='text' class='l-quality' placeholder='Quality (e.g. 1080p)' value='" + quality + "' style='width: 25%; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: white;'>" +
+            row.innerHTML = "<input type='text' class='l-season' placeholder='Season (e.g. 1)' value='" + season + "' style='width: 12%; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: white;'>" +
+                            "<input type='text' class='l-episode' placeholder='Ep (e.g. 1)' value='" + episode + "' style='width: 12%; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: white;'>" +
+                            "<input type='text' class='l-quality' placeholder='Quality (e.g. 1080p)' value='" + quality + "' style='width: 18%; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: white;'>" +
+                            "<input type='text' class='l-name' placeholder='Episode Name/Details' value='" + name + "' style='width: 25%; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: white;'>" +
                             "<input type='text' class='l-fileid' placeholder='Paste File_ID here' value='" + file_id + "' style='flex: 1; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: white;'>" +
                             "<button type='button' class='btn-danger' style='padding: 0 0.5rem;' onclick='this.parentElement.remove()'>X</button>";
             container.appendChild(row);
@@ -569,8 +570,9 @@
                 const s = row.querySelector('.l-season').value;
                 const e = row.querySelector('.l-episode').value;
                 const q = row.querySelector('.l-quality').value;
+                const n = row.querySelector('.l-name').value;
                 const f = row.querySelector('.l-fileid').value;
-                if(q && f) links.push({quality: q, file_id: f, season: s, episode: e});
+                if(q && f) links.push({quality: q, file_id: f, season: s, episode: e, name: n});
             });
             
             if(!title || links.length === 0) {
