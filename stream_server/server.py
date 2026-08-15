@@ -66,6 +66,14 @@ class StreamServer:
         self.app.router.add_get('/player/{file_id}/{filename}', self.player_page)
         self.app.router.add_get('/embed/{file_id}/{filename}', self.embed_player)
         self.app.router.add_get('/thumb/{file_id}', self.thumb_handler)
+        self.app.router.add_get('/admin', self.admin_page)
+        self.app.router.add_static('/admin/', 'stream_server/admin')
+
+    async def admin_page(self, request):
+        import os
+        index_path = os.path.join(os.path.dirname(__file__), 'admin', 'index.html')
+        with open(index_path, 'r', encoding='utf-8') as f:
+            return web.Response(text=f.read(), content_type='text/html')
 
     async def options_handler(self, request):
         headers = {
