@@ -634,7 +634,7 @@ async def tmdbstatus_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         processed = movies_collection.count_documents({"tmdb_processed": True})
         found = movies_collection.count_documents({"tmdb_found": True})
         
-        msg = f"🎬 **TMDB Background Status**\n\n"
+        msg = f"🎬 **OMDB Background Status**\n\n"
         msg += f"📊 Total Movies: `{total}`\n"
         msg += f"✅ Processed: `{processed}`\n"
         msg += f"🌟 Posters Found: `{found}`\n"
@@ -691,7 +691,7 @@ async def exporttmdb_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         completed = list(movies_collection.find({"tmdb_found": True}))
         failed = list(movies_collection.find({"tmdb_found": False, "tmdb_processed": True}))
         
-        report = "=== TMDB ENRICHER EXPORT ===\n\n"
+        report = "=== OMDB ENRICHER EXPORT ===\n\n"
         
         report += f"🌟 POSTERS FOUND ({len(completed)}):\n"
         for c in completed:
@@ -710,7 +710,7 @@ async def exporttmdb_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await context.bot.send_document(
             chat_id=update.effective_chat.id,
             document=open(file_path, 'rb'),
-            caption="📊 **TMDB Enrichment Report**",
+            caption="📊 **OMDB Enrichment Report**",
             parse_mode="Markdown"
         )
         await status_msg.delete()

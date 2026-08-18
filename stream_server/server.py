@@ -2532,18 +2532,16 @@ function closeToast() {{ document.getElementById('toast').classList.remove('show
             clean_name = clean_title(movie.get('file_name', ''))
             
             if clean_name:
-                tmdb_api_key = "74683f7b34f7b689d84fcd8e0016d82a"
-                search_url = f"https://api.themoviedb.org/3/search/movie?api_key={tmdb_api_key}&query={clean_name}"
+                omdb_api_key = os.environ.get("OMDB_API_KEY", "a9118a3a")
+                search_url = f"http://www.omdbapi.com/?apikey={omdb_api_key}&t={clean_name}"
                 
                 async with aiohttp.ClientSession() as session:
                     async with session.get(search_url) as resp:
                         if resp.status == 200:
                             data = await resp.json()
-                            if data.get('results') and len(data['results']) > 0:
-                                poster_path = data['results'][0].get('poster_path')
-                                if poster_path:
-                                    poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}"
-                                    # Redirect to TMDB image!
+                            if data.get('Response') == 'True':
+                                poster_url = data.get('Poster')
+                                if poster_url and poster_url != "N/A":
                                     return web.HTTPFound(location=poster_url)
             
             # 2. Fallback to Telegram Video Thumbnail

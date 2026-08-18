@@ -58,57 +58,46 @@ def clean_movie_title(filename):
         
     return name.strip()
 
-def search_tmdb(title):
+def search_omdb(title):
     if not title:
         return None
         
-    url = f"https://api.themoviedb.org/3/search/multi"
+    OMDB_API_KEY = os.environ.get("OMDB_API_KEY", "a9118a3a") # Use env or fallback key
+    url = f"http://www.omdbapi.com/"
     params = {
-        "api_key": TMDB_API_KEY,
-        "query": title,
-        "include_adult": "false",
-        "language": "en-US",
-        "page": 1
+        "apikey": OMDB_API_KEY,
+        "t": title,
     }
     
     try:
         response = requests.get(url, params=params, timeout=10)
         data = response.json()
         
-        if data.get("results") and len(data["results"]) > 0:
-            # Get the first result (most relevant)
-            # Filter out person results (actors)
-            valid_results = [r for r in data["results"] if r.get("media_type") in ["movie", "tv"]]
-            
-            if valid_results:
-                return valid_results[0]
+        if data.get("Response") == "True":
+            return data
                 
         # If no results, try removing the last word (often helps if title is messy)
         words = title.split()
         if len(words) > 1:
             shorter_title = " ".join(words[:-1])
-            return search_tmdb(shorter_title) # Recursive fallback
+            return search_omdb(shorter_title) # Recursive fallback
             
     except Exception as e:
-        print(f"TMDB API Error for '{title}': {e}")
+        print(f"OMDB API Error for '{title}': {e}")
         
     return None
 
 def start_enricher():
-    print("Starting TMDB Enricher Background Worker...")
+    print("Starting OMDB Enricher Background Worker...")
     
     while True:
         try:
-            # Find movies that haven't been processed by TMDB yet
-            # Also find movies where tmdb_processed exists but is False (meaning previous failure)
-            # We prioritize movies that don't even have the field.
+            # Find movies that haven't been processed by TMDB/OMDB yet
             movie = movies_collection.find_one({
                 "tmdb_processed": {"$exists": False}
             })
             
             if not movie:
-                # If all are processed, try the ones that failed previously (maybe API was down)
-                # But let's just sleep instead to prevent infinite failure loops
                 print("✅ All movies enriched! Sleeping for 60 seconds...")
                 time.sleep(60)
                 continue
@@ -117,27 +106,30 @@ def start_enricher():
             clean_title = clean_movie_title(original_filename)
             
             print(f"\n🔄 Processing: {original_filename}")
-            print(f"🔍 Searching TMDB for: '{clean_title}'")
+            print(f"🔍 Searching OMDB for: '{clean_title}'")
             
-            tmdb_data = search_tmdb(clean_title)
+            omdb_data = search_omdb(clean_title)
             
-            if tmdb_data:
-                # Build rich metadata object
-                base_img_url = "https://image.tmdb.org/t/p/w500"
-                base_bg_url = "https://image.tmdb.org/t/p/original"
-                
-                poster_path = tmdb_data.get("poster_path")
-                backdrop_path = tmdb_data.get("backdrop_path")
+            if omdb_data:
+                poster_url = omdb_data.get("Poster")
+                if poster_url == "N/A":
+                    poster_url = None
+                    
+                rating = omdb_data.get("imdbRating")
+                try:
+                    rating = float(rating) if rating != "N/A" else 0.0
+                except:
+                    rating = 0.0
                 
                 rich_data = {
-                    "tmdb_id": tmdb_data.get("id"),
-                    "tmdb_type": tmdb_data.get("media_type"),
-                    "title": tmdb_data.get("title") or tmdb_data.get("name"),
-                    "overview": tmdb_data.get("overview"),
-                    "release_date": tmdb_data.get("release_date") or tmdb_data.get("first_air_date"),
-                    "rating": tmdb_data.get("vote_average"),
-                    "poster_url": f"{base_img_url}{poster_path}" if poster_path else None,
-                    "backdrop_url": f"{base_bg_url}{backdrop_path}" if backdrop_path else None,
+                    "tmdb_id": omdb_data.get("imdbID"), # using imdbID to maintain schema compatibility
+                    "tmdb_type": "movie" if omdb_data.get("Type") == "movie" else "tv",
+                    "title": omdb_data.get("Title"),
+                    "overview": omdb_data.get("Plot") if omdb_data.get("Plot") != "N/A" else "No description available.",
+                    "release_date": omdb_data.get("Released") if omdb_data.get("Released") != "N/A" else omdb_data.get("Year"),
+                    "rating": rating,
+                    "poster_url": poster_url,
+                    "backdrop_url": poster_url, # OMDB doesn't have backdrops, fallback to poster
                     "tmdb_processed": True,
                     "tmdb_found": True
                 }
@@ -154,9 +146,9 @@ def start_enricher():
                     {"_id": movie["_id"]},
                     {"$set": {"tmdb_processed": True, "tmdb_found": False}}
                 )
-                print(f"❌ Not found on TMDB.")
+                print(f"❌ Not found on OMDB.")
                 
-            # Sleep 1 second to respect TMDB rate limits (max 40 requests per 10 seconds)
+            # Sleep 1 second to respect rate limits
             time.sleep(1)
             
         except Exception as e:
