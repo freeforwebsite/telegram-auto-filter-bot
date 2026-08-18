@@ -57,6 +57,7 @@ class StreamServer:
         self.app.router.add_post('/api/published', self.api_publish)
         self.app.router.add_post('/api/published/delete', self.api_delete_published)
         self.app.router.add_get('/api/app/movies', self.api_app_movies)
+        self.app.router.add_get('/api/app/search', self.api_app_search)
         self.app.router.add_post('/api/queue/retry', self.api_retry)
         self.app.router.add_post('/api/queue/delete', self.api_delete)
         self.app.router.add_post('/api/queue/retry_all', self.api_retry_all)
@@ -196,6 +197,66 @@ class StreamServer:
             doc['_id'] = str(doc['_id'])
             movies.append(doc)
         return web.json_response(movies, headers=headers)
+
+    # PUBLIC ROUTE FOR THE CONSUMER APP TO SEARCH RAW MOVIES DIRECTLY
+    async def api_app_search(self, request):
+        headers = {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+        }
+        try:
+            search_query = request.query.get('q', '').strip()
+            if not search_query:
+                return web.json_response([], headers=headers)
+                
+            import re
+            # Search raw Telegram movies collection directly!
+            query = {"$or": [
+                {"file_name": {"$regex": re.escape(search_query), "$options": "i"}}, 
+                {"title": {"$regex": re.escape(search_query), "$options": "i"}}
+            ]}
+            
+            cursor = movies_col.find(query).sort('_id', -1).limit(50)
+            
+            movie_groups = {}
+            
+            async for doc in cursor:
+                # Group multiple qualities of the same movie together by TMDB ID or clean title
+                key = str(doc.get('tmdb_id')) if doc.get('tmdb_id') else doc.get('title')
+                if not key:
+                    key = doc.get('file_name', 'Unknown')
+                    
+                if key not in movie_groups:
+                    movie_groups[key] = {
+                        "_id": str(doc['_id']),
+                        "title": doc.get('title') or doc.get('file_name'),
+                        "description": doc.get('overview') or "No description available.",
+                        "poster": doc.get('poster_url'),
+                        "backdrop": doc.get('backdrop_url') or doc.get('poster_url'),
+                        "category": doc.get('tmdb_type') or "movie",
+                        "links": []
+                    }
+                
+                # Extract quality from file_name
+                file_name = doc.get('file_name', '')
+                quality = "Unknown"
+                if "1080p" in file_name.lower(): quality = "1080p"
+                elif "720p" in file_name.lower(): quality = "720p"
+                elif "480p" in file_name.lower(): quality = "480p"
+                elif "2160p" in file_name.lower() or "4k" in file_name.lower(): quality = "4K"
+                
+                movie_groups[key]["links"].append({
+                    "quality": quality,
+                    "file_id": doc.get('file_id'),
+                    "name": file_name,
+                    "season": None,
+                    "episode": None
+                })
+                
+            results = list(movie_groups.values())
+            return web.json_response(results, headers=headers)
+        except Exception as e:
+            return web.Response(status=500, text=str(e), headers=headers)
 
     async def api_retry(self, request):
         if not self.check_admin(request): return web.Response(status=401)
