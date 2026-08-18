@@ -62,7 +62,7 @@ def search_omdb(title):
     if not title:
         return None
         
-    OMDB_API_KEY = os.environ.get("OMDB_API_KEY", "a9118a3a") # Use env or fallback key
+    OMDB_API_KEY = os.environ.get("OMDB_API_KEY", "3bc5f75d") # Use env or fallback key
     url = f"http://www.omdbapi.com/"
     params = {
         "apikey": OMDB_API_KEY,

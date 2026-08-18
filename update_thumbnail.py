@@ -30,7 +30,7 @@ new_thumb_method = """
             clean_name = clean_title(movie.get('file_name', ''))
             
             if clean_name:
-                omdb_api_key = os.environ.get("OMDB_API_KEY", "a9118a3a")
+                omdb_api_key = os.environ.get("OMDB_API_KEY", "3bc5f75d")
                 search_url = f"http://www.omdbapi.com/?apikey={omdb_api_key}&t={clean_name}"
                 
                 async with aiohttp.ClientSession() as session:
