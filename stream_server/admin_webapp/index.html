@@ -103,7 +103,7 @@
                     <div class="stat-card glass-card">
                         <div class="stat-icon"><i class='bx bx-check-shield'></i></div>
                         <div class="stat-details">
-                            <h3>TMDB Enriched</h3>
+                            <h3>OMDB Enriched</h3>
                             <h2 id="enriched-count">0</h2>
                         </div>
                     </div>
@@ -177,20 +177,20 @@
 
             <div class="view-container hidden" id="add-product-view">
                 <h1 class="view-title">Create Master Movie</h1>
-                <p class="view-subtitle">Manually add a movie by fetching its TMDB metadata and pasting your auto-filter bot stream links.</p>
+                <p class="view-subtitle">Manually add a movie by fetching its OMDB metadata and pasting your auto-filter bot stream links.</p>
                 
                 <div class="glass-panel" style="max-width: 800px; margin-top: 30px;">
-                    <!-- Step 1: TMDB Fetch & Custom Image -->
+                    <!-- Step 1: OMDB Fetch & Custom Image -->
                     <div style="margin-bottom: 20px;">
                         <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                             <div style="flex: 1;">
-                                <label style="display:block; margin-bottom: 8px; color: var(--text-muted);">Movie Title or TMDB ID (Required)</label>
-                                <input type="text" id="curated-tmdb-id" class="search-box" style="width: 100%; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; background: rgba(255,255,255,0.05); color: white;" placeholder="e.g. Leo or 615656">
+                                <label style="display:block; margin-bottom: 8px; color: var(--text-muted);">Movie Title or OMDB ID (Required)</label>
+                                <input type="text" id="curated-OMDB-id" class="search-box" style="width: 100%; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; background: rgba(255,255,255,0.05); color: white;" placeholder="e.g. Leo or 615656">
                             </div>
-                            <button class="primary-btn" onclick="fetchTmdbMetadata()" style="margin-top: 28px; white-space: nowrap;"><i class='bx bx-search'></i> Fetch Poster</button>
+                            <button class="primary-btn" onclick="fetchOMDBMetadata()" style="margin-top: 28px; white-space: nowrap;"><i class='bx bx-search'></i> Fetch Poster</button>
                         </div>
                         <div style="flex: 1;">
-                            <label style="display:block; margin-bottom: 8px; color: var(--text-muted);">Custom Poster URL (Optional - Overrides TMDB)</label>
+                            <label style="display:block; margin-bottom: 8px; color: var(--text-muted);">Custom Poster URL (Optional - Overrides OMDB)</label>
                             <input type="text" id="curated-custom-poster" class="search-box" style="width: 100%; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; background: rgba(255,255,255,0.05); color: white;" placeholder="Paste Google Photos or custom image link here">
                         </div>
                     </div>

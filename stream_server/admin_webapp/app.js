@@ -246,43 +246,42 @@ function globalSearch(query) {
 let currentMasterMovie = null;
 let streamCount = 0;
 
-async function fetchTmdbMetadata() {
-    const input = document.getElementById('curated-tmdb-id').value;
+async function fetchOmdbMetadata() {
+    const input = document.getElementById('curated-omdb-id').value;
     if (!input) return;
     
     try {
         let data;
-        // If purely digits, fetch by ID. Else search by title.
-        if (/^\d+$/.test(input)) {
-            const res = await fetch(`https://api.themoviedb.org/3/movie/${input}?api_key=15d2ea6d0dc1d476efbca3eba2b9bbfb`);
-            if (!res.ok) throw new Error("TMDB ID not found");
+        const apiKey = "3bc5f75d";
+        // If it starts with 'tt', fetch by ID. Else search by title.
+        if (input.startsWith("tt")) {
+            const res = await fetch(`http://www.omdbapi.com/?i=${input}&apikey=${apiKey}`);
             data = await res.json();
+            if (data.Response === "False") throw new Error("OMDB ID not found");
         } else {
-            const res = await fetch(`https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(input)}&api_key=15d2ea6d0dc1d476efbca3eba2b9bbfb`);
-            if (!res.ok) throw new Error("TMDB Search failed");
-            const searchData = await res.json();
-            if (searchData.results.length === 0) throw new Error("No movies found with that title");
-            data = searchData.results[0]; // Take first result
+            const res = await fetch(`http://www.omdbapi.com/?t=${encodeURIComponent(input)}&apikey=${apiKey}`);
+            data = await res.json();
+            if (data.Response === "False") throw new Error("No movies found with that title");
         }
         
         currentMasterMovie = {
-            tmdbId: data.id,
-            title: data.title,
-            poster: `https://image.tmdb.org/t/p/w500${data.poster_path}`,
+            omdbId: data.imdbID,
+            title: data.Title,
+            poster: data.Poster !== "N/A" ? data.Poster : "https://via.placeholder.com/500x750?text=No+Poster",
             streams: []
         };
         
-        document.getElementById('curated-title').textContent = data.title;
-        document.getElementById('curated-year').textContent = data.release_date ? data.release_date.split('-')[0] : "";
+        document.getElementById('curated-title').textContent = data.Title;
+        document.getElementById('curated-year').textContent = data.Year;
         document.getElementById('curated-poster').src = currentMasterMovie.poster;
         document.getElementById('curated-metadata-preview').style.display = "flex";
         
         if (streamCount === 0) addStreamField();
         
     } catch (e) {
-        // If TMDB fails (e.g. ISP blocking), fallback to manual entry using the input as title
+        // If OMDB fails (e.g. ISP blocking), fallback to manual entry using the input as title
         currentMasterMovie = {
-            tmdbId: Date.now().toString(), // generate a unique ID
+            omdbId: Date.now().toString(), // generate a unique ID
             title: input,
             poster: "https://via.placeholder.com/500x750?text=No+Poster",
             streams: []
@@ -325,7 +324,7 @@ function addStreamField() {
 async function saveMasterMovie() {
     if (!currentMasterMovie) {
         // Automatically try to fetch it for them if they forgot to click the button
-        await fetchTmdbMetadata();
+        await fetchOmdbMetadata();
         if (!currentMasterMovie) {
             return; // If it's still null, fetch failed (error alert already shown)
         }
@@ -392,7 +391,7 @@ async function saveMasterMovie() {
             statusEl.innerHTML = `<i class='bx bx-check-circle'></i> "${currentMasterMovie.title}" successfully saved!`;
             statusEl.style.color = "#2ed573";
             setTimeout(() => {
-                document.getElementById('curated-tmdb-id').value = '';
+                document.getElementById('curated-omdb-id').value = '';
                 document.getElementById('curated-custom-poster').value = '';
                 document.getElementById('curated-metadata-preview').style.display = "none";
                 document.getElementById('curated-streams-container').innerHTML = '';
