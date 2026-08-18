@@ -2566,22 +2566,27 @@ function closeToast() {{ document.getElementById('toast').classList.remove('show
             
             # Helper to clean filename
             def clean_title(filename):
-                name = re.sub(r'\.(mkv|mp4|avi|webm)$', '', filename, flags=re.IGNORECASE)
+                name = filename
+                name = re.sub(r'\.(mkv|mp4|avi|webm)$', '', name, flags=re.IGNORECASE)
                 
-                # Strip out brackets completely
-                name = re.sub(r'\[.*?\]', '', name)
-                name = re.sub(r'\(.*?\)', '', name)
+                # Replace brackets, parentheses, and plus signs with space
+                name = re.sub(r'[\[\]\(\)\+]', ' ', name)
                 
-                # Strip Season/Episode formats like S05, S05E07, Season 5, Ep 4
-                name = re.sub(r'(?i)(s\d{2}e\d{2}|s\d{2}|season\s*\d+|ep\s*\d+|e\d{2})', '', name)
+                # Replace dots, underscores, dashes with space BEFORE tag stripping
+                name = re.sub(r'[\._\-]', ' ', name)
+                
+                # Strip Season/Episode formats
+                name = re.sub(r'(?i)\b(s\d{2}e\d{2}|s\d{2}|season\s*\d+|ep\s*\d+|e\d{2})\b', '', name)
                 
                 # Tags to strip (with word boundaries!)
-                tags = [r'1080p', r'720p', r'480p', r'2160p', r'4k', r'x264', r'x265', r'hevc', r'avc', r'10bit', r'hdr', r'webrip', r'web-dl', r'hdrip', r'bluray', r'brrip', r'dvdrip', r'hdtv', r'web', r'dl', r'tamil', r'telugu', r'hindi', r'malayalam', r'kannada', r'english', r'multi', r'audio', r'dual', r'sub', r'esub', r'msub', r'untouched', r'esubs', r'hq', r'line', r'predvd', r'nf', r'ta', r'ddp\d\.\d']
+                tags = [r'1080p', r'720p', r'480p', r'2160p', r'4k', r'x264', r'x265', r'hevc', r'avc', r'10bit', 
+r'hdr', r'webrip', r'web-dl', r'hdrip', r'bluray', r'brrip', r'dvdrip', r'hdtv', r'web', r'dl', r'tamil', r'telugu', 
+r'hindi', r'malayalam', r'kannada', r'english', r'multi', r'audio', r'dual', r'sub', r'esub', r'msub', r'untouched', 
+r'esubs', r'hq', r'line', r'predvd', r'nf', r'ta', r'ddp\d\.\d', r'tam', r'tel']
                 
                 for tag in tags:
                     name = re.sub(rf'\b{tag}\b', '', name, flags=re.IGNORECASE)
                     
-                name = re.sub(r'[\._\-]', ' ', name)
                 name = re.sub(r'@\w+', '', name)
                 name = re.sub(r'(?i)t me\S*', '', name)
                 

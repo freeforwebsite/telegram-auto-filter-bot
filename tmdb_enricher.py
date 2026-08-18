@@ -18,10 +18,20 @@ movies_collection = db['movies']
 def clean_movie_title(filename):
     """
     Strips out resolution, quality, codecs, and language tags 
-    to extract a clean movie title for TMDB search.
+    to extract a clean movie title for OMDB search.
     """
+    name = filename
     # Remove file extension
-    name = re.sub(r'\.(mkv|mp4|avi|webm)$', '', filename, flags=re.IGNORECASE)
+    name = re.sub(r'\.(mkv|mp4|avi|webm)$', '', name, flags=re.IGNORECASE)
+    
+    # Replace brackets, parentheses, and plus signs with space
+    name = re.sub(r'[\[\]\(\)\+]', ' ', name)
+    
+    # Replace dots, underscores, dashes with space BEFORE tag stripping
+    name = re.sub(r'[\._\-]', ' ', name)
+    
+    # Strip Season/Episode formats
+    name = re.sub(r'(?i)\b(s\d{2}e\d{2}|s\d{2}|season\s*\d+|ep\s*\d+|e\d{2})\b', '', name)
     
     # Common release tags to remove
     tags = [
@@ -31,21 +41,20 @@ def clean_movie_title(filename):
         r'tamil', r'telugu', r'hindi', r'malayalam', r'kannada', r'english',
         r'multi', r'audio', r'dual', r'sub', r'esub', r'msub',
         r'untouched', r'esubs', r'hq', r'line', r'predvd', r'nf', r'ta',
-        r'\[.*?\]', r'\(.*?\)' # Remove brackets and parentheses
+        r'ddp\d\.\d', r'tam', r'tel'
     ]
     
     for tag in tags:
-        name = re.sub(tag, '', name, flags=re.IGNORECASE)
+        name = re.sub(rf'\b{tag}\b', '', name, flags=re.IGNORECASE)
         
-    # Replace dots, underscores, and dashes with spaces
-    name = re.sub(r'[\._\-]', ' ', name)
-    
     # Remove extra whitespace
     name = re.sub(r'\s+', ' ', name).strip()
     
     # Special fix for @channel tags or web links
     name = re.sub(r'@\w+', '', name)
-    name = re.sub(r't me.*', '', name, flags=re.IGNORECASE)
+    name = re.sub(r'(?i)t me\S*', '', name)
+    
+    return name
     
     # Try to extract just the title before a year if present
     # e.g. "Spider Man 2002" -> "Spider Man"
