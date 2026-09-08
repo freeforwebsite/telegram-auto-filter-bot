@@ -26,18 +26,35 @@ MONGODB_URI = os.environ.get("MONGODB_URI", "")
 client = None
 db = None
 movies_collection = None
+users_collection = None
 
 if MONGODB_URI:
     try:
         client = pymongo.MongoClient(MONGODB_URI)
         db = client['telegram_bot']
         movies_collection = db['movies']
+        users_collection = db['users']
         
         # Connect to Cinescraper's database
         scrape_db = client['cinesearch_db']
         scrape_queue = scrape_db['scrape_queue']
     except Exception as e:
         print(f"MongoDB Connection Error: {e}")
+
+def track_user(user):
+    if users_collection is not None and user is not None:
+        try:
+            users_collection.update_one(
+                {'user_id': user.id},
+                {'$set': {
+                    'username': user.username,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name
+                }},
+                upsert=True
+            )
+        except Exception as e:
+            print(f"Error tracking user: {e}")
 
 def add_movie(file_id, file_name, caption, source_chat_id=None, source_message_id=None, file_size=None):
     if movies_collection is None:
@@ -118,6 +135,7 @@ def get_movie_by_id(movie_id):
     return movies_collection.find_one({'id': movie_id})
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    track_user(update.effective_user)
     if update.effective_chat.type == 'private':
         # Check for deep link request: /start get_uuid
         text = update.message.text
@@ -311,6 +329,7 @@ async def delete_after(message, seconds):
         pass
 
 async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    track_user(update.effective_user)
     # Only listen in groups, supergroups, and private messages (ignore channels)
     if update.effective_chat.type == 'channel':
         return
@@ -381,6 +400,7 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     asyncio.create_task(delete_after(searching_msg, 60))
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    track_user(update.effective_user)
     query = update.callback_query
     
     data = query.data
@@ -621,9 +641,21 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     try:
         count = movies_collection.count_documents({})
-        await update.message.reply_text(f"✅ **MongoDB is Connected!**\n\nTotal movies in database: **{count}**", parse_mode="Markdown")
+        user_count = users_collection.count_documents({}) if users_collection is not None else 0
+        await update.message.reply_text(f"✅ **MongoDB is Connected!**\n\nTotal movies in database: **{count}**\nTotal unique users: **{user_count}**", parse_mode="Markdown")
     except Exception as e:
         await update.message.reply_text(f"❌ **MongoDB Error:** {e}")
+
+async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if users_collection is None:
+        await update.message.reply_text("❌ **MongoDB is NOT connected or users collection not initialized.**", parse_mode="Markdown")
+        return
+        
+    try:
+        user_count = users_collection.count_documents({})
+        await update.message.reply_text(f"👥 **Total Unique Users:** {user_count}", parse_mode="Markdown")
+    except Exception as e:
+        await update.message.reply_text(f"❌ **Error fetching users:** {e}")
 
 async def tmdbstatus_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if movies_collection is None:
@@ -873,6 +905,7 @@ def main():
     application.add_handler(CommandHandler('start', start_handler))
     application.add_handler(CommandHandler('batch', batch_command))
     application.add_handler(CommandHandler('status', status_command))
+    application.add_handler(CommandHandler('users', users_command))
     application.add_handler(CommandHandler('tmdbstatus', tmdbstatus_command))
     application.add_handler(CommandHandler('testposter', testposter_command))
     application.add_handler(CommandHandler('exporttmdb', exporttmdb_command))
