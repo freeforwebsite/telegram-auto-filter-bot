@@ -382,27 +382,50 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=reply_markup,
             parse_mode="Markdown"
         )
-        # Auto-delete BOTH the user's message and bot's message after 60s
-        asyncio.create_task(delete_after(update.message, 60))
-        asyncio.create_task(delete_after(searching_msg, 60))
+        # Auto-delete BOTH the user's message and bot's message after 300s in groups
+        if update.effective_chat.type != 'private':
+            asyncio.create_task(delete_after(update.message, 300))
+            asyncio.create_task(delete_after(searching_msg, 300))
         return
         
     short_query = query[:40]
     reply_markup = build_paginated_keyboard(results, 1, short_query)
     
+    text_content = f"🔍 **Found {len(results)} result(s) for:** `{query}`"
+    
     await searching_msg.edit_text(
-        f"🔍 **Found {len(results)} result(s) for:** `{query}`",
+        text_content,
         reply_markup=reply_markup,
         parse_mode="Markdown"
     )
-    # Auto-delete BOTH the user's message and bot's message after 60s
-    asyncio.create_task(delete_after(update.message, 60))
-    asyncio.create_task(delete_after(searching_msg, 60))
+    
+    if update.effective_chat.type != 'private':
+        # Try to send a permanent copy to the user's PM
+        try:
+            await context.bot.send_message(
+                chat_id=update.effective_user.id,
+                text=text_content + "\n\n*(This is your permanent copy, it will not be deleted!)*",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+        except Exception:
+            pass # They haven't started the bot in PM yet
+            
+        # Auto-delete BOTH the user's message and bot's message after 300s (5 mins) in group
+        asyncio.create_task(delete_after(update.message, 300))
+        asyncio.create_task(delete_after(searching_msg, 300))
+
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     track_user(update.effective_user)
     query = update.callback_query
     
+    # Ensure only the original sender can click the buttons in groups
+    original_msg = query.message.reply_to_message
+    if original_msg and original_msg.from_user.id != update.effective_user.id:
+        await query.answer("This is not for you! Please search for your own movie.", show_alert=True)
+        return
+        
     data = query.data
     
     if data == "ignore":
