@@ -94,6 +94,30 @@ async def claim_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text("✅ **Success!** You are now the bot owner. You can use /users and other admin commands.", parse_mode="Markdown")
 
+
+async def whereami_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    import platform, socket, os
+    
+    info = []
+    info.append(f"**Hostname:** `{socket.gethostname()}`")
+    info.append(f"**System:** `{platform.system()} {platform.release()}`")
+    
+    # Check common hosting env vars
+    if os.environ.get('RENDER'):
+        info.append("☁️ **Host:** Render.com")
+        info.append(f"📦 **Service Name:** `{os.environ.get('RENDER_SERVICE_NAME', 'Unknown')}`")
+    elif os.environ.get('SPACE_ID'):
+        info.append("☁️ **Host:** HuggingFace Spaces")
+        info.append(f"📦 **Space:** `{os.environ.get('SPACE_ID')}`")
+    elif os.environ.get('DYNO'):
+        info.append("☁️ **Host:** Heroku")
+    elif os.environ.get('KOYEB_APP_NAME'):
+        info.append("☁️ **Host:** Koyeb")
+    else:
+        info.append("☁️ **Host:** Unknown / Local")
+        
+    await update.message.reply_text("\n".join(info), parse_mode="Markdown")
+
 def add_movie(file_id, file_name, caption, source_chat_id=None, source_message_id=None, file_size=None):
     if movies_collection is None:
         print("WARNING: MongoDB not connected. Cannot add movie.")
@@ -985,6 +1009,7 @@ def main():
         print(f"Warning: Failed to schedule daily welcome: {e}")
     
     application.add_handler(CommandHandler('start', start_handler))
+    application.add_handler(CommandHandler('whereami', whereami_command))
     application.add_handler(CommandHandler('claim', claim_command))
     application.add_handler(CommandHandler('batch', batch_command))
     application.add_handler(CommandHandler('status', status_command))
