@@ -400,11 +400,14 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_name += f" {update.effective_user.last_name}"
         
     text_content = (
-        f"🧿 **ᴛɪᴛʟᴇ :** `{query}`\n"
-        f"📂 **ᴛᴏᴛᴀʟ ꜰɪʟᴇꜱ :** {len(results)}\n"
-        f"👤 **ʀᴇǫᴜᴇꜱᴛᴇᴅ ʙʏ :** {user_name}\n"
-        f"⏱ **ʀᴇꜱᴜʟᴛ ɪɴ :** {search_time} ꜱᴇᴄᴏɴᴅꜱ\n\n"
-        f"👇 **𝑹𝒆𝒒𝒖𝒆𝒔𝒕𝒆𝒅 𝑭𝒊𝒍𝒆𝒔 𝑩𝒆𝒍𝒐𝒘** 👇"
+        f"╭━━ 🎬 **Search Results** ━━╮\n"
+        f"┃\n"
+        f"┣ 🍿 **Movie :** `{query}`\n"
+        f"┣ 📁 **Total Files :** {len(results)}\n"
+        f"┣ 👤 **Requested By :** {user_name}\n"
+        f"┣ ⚡ **Time Taken :** {search_time}s\n"
+        f"┃\n"
+        f"╰━━ 👇 **Select Your File Below** 👇 ━━╯"
     )
     
     await searching_msg.edit_text(
