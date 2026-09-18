@@ -56,6 +56,45 @@ def track_user(user):
         except Exception as e:
             print(f"Error tracking user: {e}")
 
+
+ADMIN_IDS = [int(x.strip()) for x in os.environ.get("ADMINS", "").split(",") if x.strip().isdigit()]
+
+def admin_only(func):
+    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        user_id = update.effective_user.id
+        is_authorized = False
+        
+        if user_id in ADMIN_IDS:
+            is_authorized = True
+        elif db is not None:
+            config = db['config'].find_one({'type': 'bot_admins'})
+            if config and config.get('admins') and user_id in config['admins']:
+                is_authorized = True
+                
+        if not is_authorized:
+            await update.message.reply_text("⛔ **Access Denied!** You are not the owner of this bot.\n\n*If you are the owner, type /claim to claim ownership, or add your ID to the ADMINS environment variable.*", parse_mode="Markdown")
+            return
+            
+        return await func(update, context)
+    return wrapper
+
+async def claim_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if db is None:
+        await update.message.reply_text("Database not connected!")
+        return
+        
+    config = db['config'].find_one({'type': 'bot_admins'})
+    if config and config.get('admins'):
+        await update.message.reply_text("⛔ **Owner is already set!**", parse_mode="Markdown")
+        return
+        
+    db['config'].update_one(
+        {'type': 'bot_admins'}, 
+        {'$set': {'admins': [update.effective_user.id]}}, 
+        upsert=True
+    )
+    await update.message.reply_text("✅ **Success!** You are now the bot owner. You can use /users and other admin commands.", parse_mode="Markdown")
+
 def add_movie(file_id, file_name, caption, source_chat_id=None, source_message_id=None, file_size=None):
     if movies_collection is None:
         print("WARNING: MongoDB not connected. Cannot add movie.")
@@ -601,6 +640,7 @@ import asyncio
 
 batch_users = {}
 
+@admin_only
 async def batch_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if update.effective_chat.type != 'private':
@@ -674,6 +714,7 @@ async def batch_forward_handler(update: Update, context: ContextTypes.DEFAULT_TY
             
     await status_msg.edit_text(f"✅ **Batch Indexing Complete!**\n\nSuccessfully added **{success_count}** new movies to the database.", parse_mode="Markdown")
 
+@admin_only
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if movies_collection is None:
         await update.message.reply_text("❌ **MongoDB is NOT connected.**", parse_mode="Markdown")
@@ -686,6 +727,7 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"❌ **MongoDB Error:** {e}")
 
+@admin_only
 async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if users_collection is None:
         await update.message.reply_text("❌ **MongoDB is NOT connected or users collection not initialized.**", parse_mode="Markdown")
@@ -697,6 +739,7 @@ async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"❌ **Error fetching users:** {e}")
 
+@admin_only
 async def tmdbstatus_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if movies_collection is None:
         return
@@ -716,6 +759,7 @@ async def tmdbstatus_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     except Exception as e:
         await update.message.reply_text(f"❌ **Error:** {e}")
 
+@admin_only
 async def testposter_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("⚠️ Please provide a movie name! Example: `/testposter avatar`", parse_mode="Markdown")
@@ -752,6 +796,7 @@ async def testposter_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     except Exception as e:
         await update.message.reply_text(f"❌ Could not send photo: {e}")
 
+@admin_only
 async def exporttmdb_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if movies_collection is None:
         await update.message.reply_text("❌ MongoDB not connected.")
@@ -848,6 +893,7 @@ async def send_daily_welcome(context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         print(f"Failed to send daily welcome: {e}")
 
+@admin_only
 async def setwelcome_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type == 'private':
         await update.message.reply_text("This command must be used in a Group!")
@@ -943,6 +989,7 @@ def main():
         print(f"Warning: Failed to schedule daily welcome: {e}")
     
     application.add_handler(CommandHandler('start', start_handler))
+    application.add_handler(CommandHandler('claim', claim_command))
     application.add_handler(CommandHandler('batch', batch_command))
     application.add_handler(CommandHandler('status', status_command))
     application.add_handler(CommandHandler('users', users_command))
