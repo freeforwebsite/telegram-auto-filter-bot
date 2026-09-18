@@ -120,9 +120,9 @@ def search_movies(query):
     for word in words:
         conditions.append({"file_name": {"$regex": word, "$options": "i"}})
         
-    # Let MongoDB do the heavy lifting! (Find matching all words, limit to 100)
+    # Let MongoDB do the heavy lifting! (Find matching all words)
     try:
-        cursor = movies_collection.find({"$and": conditions}).limit(100)
+        cursor = movies_collection.find({"$and": conditions})
         results = list(cursor)
         return results
     except Exception as e:
