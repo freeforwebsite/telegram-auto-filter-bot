@@ -339,10 +339,14 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not query or len(query) < 3 or len(query) > 60:
         return
         
-    # 🌟 INSTANT FEEDBACK
-    searching_msg = await update.message.reply_text(f"🔎 ꜱᴇᴀʀᴄʜɪɴɢ `{query}`", parse_mode="Markdown")
+    # 🔍 INSTANT FEEDBACK
+    searching_msg = await update.message.reply_text(f"🔍 Searching for `{query}`", parse_mode="Markdown")
         
+    import time
+    start_time = time.time()
     results = search_movies(query)
+    end_time = time.time()
+    search_time = round(end_time - start_time, 3)
     
     if not results:
         # Auto-Queue the missing movie to Cinescraper
@@ -391,7 +395,16 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     short_query = query[:40]
     reply_markup = build_paginated_keyboard(results, 1, short_query)
     
-    text_content = f"🔍 **Found {len(results)} result(s) for:** `{query}`"
+    user_name = update.effective_user.first_name
+    if update.effective_user.last_name:
+        user_name += f" {update.effective_user.last_name}"
+        
+    text_content = (
+        f"👤 **Requester:** {user_name}\n"
+        f"🍿 **Movie Name:** `{query}`\n"
+        f"⚡ **Time Taken:** {search_time}s\n"
+        f"🔎 **Total Results:** {len(results)}"
+    )
     
     await searching_msg.edit_text(
         text_content,
