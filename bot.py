@@ -72,7 +72,6 @@ def admin_only(func):
                 is_authorized = True
                 
         if not is_authorized:
-            await update.message.reply_text("⛔ **Access Denied!** You are not the owner of this bot.\n\n*If you are the owner, type /claim to claim ownership, or add your ID to the ADMINS environment variable.*", parse_mode="Markdown")
             return
             
         return await func(update, context)
