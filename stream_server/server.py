@@ -322,11 +322,11 @@ class StreamServer:
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { background-color: #0f172a; color: #f8fafc; font-family: 'Segoe UI', system-ui, sans-serif; }
-        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .play-btn { transition: all 0.2s ease; }
-        .play-btn:hover { transform: scale(1.05); }
-        video::-webkit-media-controls-panel { background-image: linear-gradient(transparent, rgba(0,0,0,0.8)); }
+        body {{ background-color: #0f172a; color: #f8fafc; font-family: 'Segoe UI', system-ui, sans-serif; }}
+        .glass-panel {{ background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }}
+        .play-btn {{ transition: all 0.2s ease; }}
+        .play-btn:hover {{ transform: scale(1.05); }}
+        video::-webkit-media-controls-panel {{ background-image: linear-gradient(transparent, rgba(0,0,0,0.8)); }}
     </style>
 </head>
 <body class="min-h-screen flex flex-col antialiased">
@@ -403,14 +403,14 @@ class StreamServer:
     </footer>
 
     <script>
-        function openExternal(url) {
+        function openExternal(url) {{
             window.location.href = url;
-        }
+        }}
         
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', () => {{
             const vid = document.getElementById('vid');
             vid.load();
-        });
+        }});
     </script>
 </body>
 </html>
