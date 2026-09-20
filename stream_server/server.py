@@ -485,12 +485,15 @@ class StreamServer:
 
         <div class="info-panel">
             <h2 class="movie-title">{display_name}</h2>
-            <a href="vlc://{window.location.origin}/watch/{file_id}/{filename}" class="btn-external">Open in VLC</a>
-            <a href="intent:{window.location.origin}/watch/{file_id}/{filename}#Intent;package=com.mxtech.videoplayer.ad;end" class="btn-external">Open in MX Player</a>
+            <button onclick="openExternal('vlc://' + window.location.origin + '/watch/{file_id}/{filename}')" class="btn-external">Open in VLC</button>
+            <button onclick="openExternal('intent:' + window.location.origin + '/watch/{file_id}/{filename}#Intent;package=com.mxtech.videoplayer.ad;end')" class="btn-external">Open in MX Player</button>
         </div>
     </main>
 
     <script>
+        function openExternal(url) {{
+            window.location.href = url;
+        }}
         const vid = document.getElementById('vid');
         const playBtn = document.getElementById('playBtn');
         const playIcon = document.getElementById('playIcon');
