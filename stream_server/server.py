@@ -62,8 +62,10 @@ class StreamServer:
         self.app.router.add_post('/api/queue/delete', self.api_delete)
         self.app.router.add_post('/api/queue/retry_all', self.api_retry_all)
         self.app.router.add_post('/api/queue/clear_all', self.api_clear_all)
-        self.app.router.add_get('/watch/{file_id}/{filename}', self.stream_handler)
-        self.app.router.add_options('/watch/{file_id}/{filename}', self.options_handler)
+        self.app.router.add_get('/stream/{movie_id}/{filename}', self.stream_handler)
+        self.app.router.add_get('/stream/{movie_id}/{filename}', self.stream_handler)
+        self.app.router.add_options('/stream/{movie_id}/{filename}', self.options_handler)
+        self.app.router.add_options('/stream/{movie_id}/{filename}', self.options_handler)
         self.app.router.add_get('/player/{file_id}/{filename}', self.player_page)
         self.app.router.add_get('/v/{id}', self.short_player_page)
         self.app.router.add_get('/embed/{file_id}/{filename}', self.embed_player)
@@ -289,6 +291,7 @@ class StreamServer:
     async def player_page(self, request):
         file_id = request.match_info['file_id']
         filename = request.match_info['filename']
+        # For legacy /player, we have to use file_id as the "movie_id" placeholder
         return await self._player_page_impl(file_id, filename)
 
     async def short_player_page(self, request):
@@ -303,13 +306,12 @@ class StreamServer:
             from aiohttp import web
             return web.Response(status=404, text="Movie not found in database or missing file_id")
             
-        file_id = movie.get('file_id')
         filename = movie.get('file_name', 'video.mp4')
         import urllib.parse
         encoded_filename = urllib.parse.quote(filename)
-        return await self._player_page_impl(file_id, encoded_filename)
+        return await self._player_page_impl(str(movie.get('_id', movie_id)), encoded_filename)
 
-    async def _player_page_impl(self, file_id, filename, display_name=None):
+    async def _player_page_impl(self, movie_id, filename, display_name=None):
         import urllib.parse
         if display_name is None:
             display_name = urllib.parse.unquote(filename)
@@ -427,7 +429,7 @@ class StreamServer:
         <!-- Video Player -->
         <div class="video-wrapper">
             <video id="vid" controls playsinline preload="auto">
-                <source src="/watch/{file_id}/{filename}" type="video/mp4">
+                <source src="/stream/{movie_id}/{filename}" type="video/mp4">
             </video>
             
             <div class="tap-left" id="tapLeft">
@@ -447,13 +449,13 @@ class StreamServer:
             <h1 class="title">{display_name}</h1>
             
             <div class="btn-grid">
-                <a href="/watch/{file_id}/{filename}" download="{filename}" class="btn btn-dl">
+                <a href="/stream/{movie_id}/{filename}" download="{filename}" class="btn btn-dl">
                     <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> Download
                 </a>
-                <button onclick="openApp('vlc://' + window.location.origin + '/watch/{file_id}/{filename}')" class="btn btn-vlc">
+                <button onclick="openApp('vlc://' + window.location.origin + '/stream/{movie_id}/{filename}')" class="btn btn-vlc">
                     <svg viewBox="0 0 24 24"><path d="M12 2L1 21h22L12 2zm0 3.5l7.5 13.5H4.5L12 5.5zM12 8L6.5 17.5h11L12 8z"/></svg> VLC Player
                 </button>
-                <button onclick="openApp('intent:' + window.location.origin + '/watch/{file_id}/{filename}#Intent;package=com.mxtech.videoplayer.ad;end')" class="btn btn-mx">
+                <button onclick="openApp('intent:' + window.location.origin + '/stream/{movie_id}/{filename}#Intent;package=com.mxtech.videoplayer.ad;end')" class="btn btn-mx">
                     <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg> MX Player
                 </button>
             </div>
@@ -532,12 +534,26 @@ class StreamServer:
         return web.Response(text=html_content, content_type='text/html', headers=headers)
 
     async def stream_handler(self, request):
-        file_id = request.match_info['file_id']
+        # We can receive either movie_id or file_id (for legacy support)
+        movie_id = request.match_info.get('movie_id')
+        file_id = request.match_info.get('file_id')
         filename = request.match_info['filename']
         
         try:
-            # 1. Look up the movie in MongoDB to get source_chat_id and source_message_id
-            movie = await movies_col.find_one({'file_id': file_id})
+            if movie_id:
+                try:
+                    from bson.objectid import ObjectId
+                    movie = await movies_col.find_one({'$or': [{'id': movie_id}, {'_id': ObjectId(movie_id) if len(movie_id)==24 else movie_id}]})
+                except:
+                    movie = await movies_col.find_one({'id': movie_id})
+            else:
+                movie = await movies_col.find_one({'file_id': file_id})
+                
+            if not movie:
+                return web.Response(status=404, text="Movie not found in database")
+            
+            # Ensure we have the file_id for Pyrogram
+            file_id = movie.get('file_id')
             if not movie:
                 return web.Response(status=404, text="Movie not found in database")
                 
@@ -1285,7 +1301,7 @@ transition:all .2s}}
 </div>
 <div class="vid-frame" id="vf">
 <video id="vid" preload="auto" playsinline autoplay>
-    <source src="/watch/{file_id}/{filename}" type="video/mp4">
+    <source src="/stream/{movie_id}/{filename}" type="video/mp4">
 </video>
 <div class="vbuf" id="vbuf"><div class="buf-spin"></div></div>
 <div class="cpop-w"><div class="cpop-ico" id="cpico"><i class="fas fa-play"></i></div></div>
@@ -1331,7 +1347,7 @@ transition:all .2s}}
 <div class="tag tag-blue" id="dur-tag"><i class="fas fa-clock"></i> Loading…</div>
 </div>
 </div>
-<a id="dlbtn" href="/watch/{file_id}/{filename}" download class="btn-download">
+<a id="dlbtn" href="/stream/{movie_id}/{filename}" download class="btn-download">
 <i class="fas fa-download"></i> Download File
 </a>
 </div>
@@ -1429,7 +1445,7 @@ transition:all .2s}}
 <button id="t-x" onclick="closeToast()"><i class="fas fa-xmark"></i></button>
 </div>
 <script>
-const VIDEO_URL = "/watch/{file_id}/{filename}";
+const VIDEO_URL = "/stream/{movie_id}/{filename}";
 const CIRC = 2 * Math.PI * 80; // 502.65
 /* ─── COUNTDOWN ─── */
 document.getElementById("ps").classList.add("show");\ninitPlayer();\nfunction ss(id, cls) {{
@@ -1622,12 +1638,26 @@ function closeToast() {{ document.getElementById('toast').classList.remove('show
         return web.Response(text=html_content, content_type='text/html', headers=headers)
 
     async def stream_handler(self, request):
-        file_id = request.match_info['file_id']
+        # We can receive either movie_id or file_id (for legacy support)
+        movie_id = request.match_info.get('movie_id')
+        file_id = request.match_info.get('file_id')
         filename = request.match_info['filename']
         
         try:
-            # 1. Look up the movie in MongoDB to get source_chat_id and source_message_id
-            movie = await movies_col.find_one({'file_id': file_id})
+            if movie_id:
+                try:
+                    from bson.objectid import ObjectId
+                    movie = await movies_col.find_one({'$or': [{'id': movie_id}, {'_id': ObjectId(movie_id) if len(movie_id)==24 else movie_id}]})
+                except:
+                    movie = await movies_col.find_one({'id': movie_id})
+            else:
+                movie = await movies_col.find_one({'file_id': file_id})
+                
+            if not movie:
+                return web.Response(status=404, text="Movie not found in database")
+            
+            # Ensure we have the file_id for Pyrogram
+            file_id = movie.get('file_id')
             if not movie:
                 return web.Response(status=404, text="Movie not found in database")
                 
