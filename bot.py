@@ -148,10 +148,10 @@ import urllib.parse
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 def get_watch_keyboard(movie):
-    render_url = os.environ.get('RENDER_EXTERNAL_URL', 'https://t.me/MoviiWrld')
+    render_url = os.environ.get('RENDER_EXTERNAL_URL', 'https://t.me/cinevalut')
     
     # If the URL is just the telegram channel (local mode), don't build a complex path
-    if render_url == 'https://t.me/MoviiWrld':
+    if render_url == 'https://t.me/cinevalut':
         watch_url = render_url
     else:
         watch_url = f"{render_url}/v/{movie.get('id') or str(movie.get('_id', ''))}"
