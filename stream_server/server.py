@@ -318,7 +318,7 @@ class StreamServer:
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LoveToRide · {filename}</title>
+<title>CineSearch · {filename}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -932,7 +932,7 @@ transition:all .2s}}
 </div>
 <div class="nav-right">
 <div class="nav-badge"><i class="fas fa-circle"></i> Secure Stream</div>
-<a href="https://t.me/lovetorideworld" target="_blank" class="btn-tg-nav">
+<a href="https://t.me/CineSearch" target="_blank" class="btn-tg-nav">
 <i class="fab fa-telegram-plane"></i> Join Channel
 </a>
 </div>
@@ -1135,7 +1135,7 @@ transform="rotate(-90 90 90)"/>
 <div class="ftag"><i class="fas fa-bolt" style="color:var(--yellow)"></i> Direct Link Streaming</div>
 <div class="ftag"><i class="fas fa-infinity" style="color:var(--teal2)"></i> No Bandwidth Limits</div>
 </div>
-<div class="fcopy">© 2026 LoveToRide · Premium File Streaming Platform</div>
+<div class="fcopy">© 2026 CineSearch · Premium File Streaming Platform</div>
 </footer>
 </div>
 </div>
@@ -1491,7 +1491,7 @@ function closeToast() {{ document.getElementById('toast').classList.remove('show
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LoveToRide · {filename}</title>
+<title>CineSearch · {filename}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
