@@ -154,7 +154,7 @@ def get_watch_keyboard(movie):
     if render_url == 'https://t.me/MoviiWrld':
         watch_url = render_url
     else:
-        watch_url = f"{render_url}/player/{movie['file_id']}/{urllib.parse.quote(movie['file_name'])}"
+        watch_url = f"{render_url}/v/{movie.get('id') or str(movie.get('_id', ''))}"
         
     return InlineKeyboardMarkup([[InlineKeyboardButton("▶️ Watch Online", url=watch_url)]])
 

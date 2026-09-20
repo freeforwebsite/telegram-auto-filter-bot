@@ -65,6 +65,7 @@ class StreamServer:
         self.app.router.add_get('/watch/{file_id}/{filename}', self.stream_handler)
         self.app.router.add_options('/watch/{file_id}/{filename}', self.options_handler)
         self.app.router.add_get('/player/{file_id}/{filename}', self.player_page)
+        self.app.router.add_get('/v/{id}', self.short_player_page)
         self.app.router.add_get('/embed/{file_id}/{filename}', self.embed_player)
         self.app.router.add_get('/thumb/{file_id}', self.thumb_handler)
         self.app.router.add_get('/admin', self.admin_page)
@@ -288,6 +289,27 @@ class StreamServer:
     async def player_page(self, request):
         file_id = request.match_info['file_id']
         filename = request.match_info['filename']
+        return await self._player_page_impl(file_id, filename)
+
+    async def short_player_page(self, request):
+        movie_id = request.match_info['id']
+        try:
+            from bson.objectid import ObjectId
+            movie = await movies_col.find_one({'$or': [{'id': movie_id}, {'_id': ObjectId(movie_id) if len(movie_id)==24 else movie_id}]})
+        except:
+            movie = await movies_col.find_one({'id': movie_id})
+            
+        if not movie or not movie.get('file_id'):
+            from aiohttp import web
+            return web.Response(status=404, text="Movie not found in database or missing file_id")
+            
+        file_id = movie.get('file_id')
+        filename = movie.get('file_name', 'video.mp4')
+        import urllib.parse
+        encoded_filename = urllib.parse.quote(filename)
+        return await self._player_page_impl(file_id, encoded_filename)
+
+    async def _player_page_impl(self, file_id, filename):
         
         # We will load the sleek HTML player here
         html_content = f"""
