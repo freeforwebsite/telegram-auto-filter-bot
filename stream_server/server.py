@@ -324,6 +324,10 @@ class StreamServer:
     <title>CineSearch | {display_name}</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Plyr CSS for beautiful video controls -->
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+    
     <style>
         :root {{
             --bg-color: #050510;
@@ -333,6 +337,8 @@ class StreamServer:
             --accent-glow: rgba(59, 130, 246, 0.5);
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
+            --plyr-color-main: #3b82f6; /* Custom Plyr accent color */
+            --plyr-video-background: #000;
         }}
         
         * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }}
@@ -381,15 +387,12 @@ class StreamServer:
         /* Main Container */
         main {{ flex: 1; width: 100%; max-width: 1100px; margin: 0 auto; padding: 40px 20px; display: flex; flex-direction: column; gap: 30px; }}
         
-        /* Player */
+        /* Player Box */
         .player-container {{ 
             width: 100%; background: #000; border-radius: 20px; overflow: hidden; 
             box-shadow: 0 20px 50px rgba(0,0,0,0.7), 0 0 0 1px var(--border-color);
-            aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; 
             position: relative;
         }}
-        video {{ width: 100%; height: 100%; object-fit: contain; }}
-        video::-webkit-media-controls-panel {{ background-image: linear-gradient(transparent, rgba(0,0,0,0.8)); }}
         
         /* Details Panel */
         .details-panel {{ 
@@ -484,7 +487,7 @@ class StreamServer:
 
     <main>
         <div class="player-container">
-            <video id="vid" controls preload="auto" playsinline>
+            <video id="vid" controls crossorigin playsinline>
                 <source src="/watch/{file_id}/{filename}" type="video/mp4">
                 Your browser does not support HTML5 video.
             </video>
@@ -524,13 +527,38 @@ class StreamServer:
         <p>&copy; 2026 CineSearch. Premium Telegram File Streaming.</p>
     </footer>
 
+    <!-- Plyr JS for Custom Video Controls -->
+    <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
     <script>
         function openExternal(url) {{
             window.location.href = url;
         }}
+        
         document.addEventListener('DOMContentLoaded', () => {{
-            const vid = document.getElementById('vid');
-            vid.load();
+            // Initialize Plyr with premium controls (forward/backward buttons included!)
+            const player = new Plyr('#vid', {{
+                controls: [
+                    'play-large', // The large play button in the center
+                    'restart', // Restart playback
+                    'rewind', // Rewind by the seek time (default 10 seconds)
+                    'play', // Play/pause playback
+                    'fast-forward', // Fast forward by the seek time (default 10 seconds)
+                    'progress', // The progress bar and scrubber for playback and buffering
+                    'current-time', // The current time of playback
+                    'duration', // The full duration of the media
+                    'mute', // Toggle mute
+                    'volume', // Volume control
+                    'captions', // Toggle captions
+                    'settings', // Settings menu
+                    'pip', // Picture-in-picture (currently Safari only)
+                    'airplay', // Airplay (currently Safari only)
+                    'fullscreen', // Toggle fullscreen
+                ],
+                settings: ['captions', 'quality', 'speed', 'loop'],
+                seekTime: 10,
+                keyboard: {{ focused: true, global: true }},
+                tooltips: {{ controls: true, seek: true }}
+            }});
         }});
     </script>
 </body>
