@@ -194,7 +194,12 @@ def search_movies(query):
 def get_movie_by_id(movie_id):
     if movies_collection is None:
         return None
-    return movies_collection.find_one({'id': movie_id})
+    try:
+        from bson.objectid import ObjectId
+        obj_id = ObjectId(movie_id)
+        return movies_collection.find_one({'$or': [{'id': movie_id}, {'_id': obj_id}]})
+    except:
+        return movies_collection.find_one({'id': movie_id})
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     track_user(update.effective_user)
@@ -328,10 +333,10 @@ def build_paginated_keyboard(results, page, query):
         
         # Use deep linking to redirect to bot PM
         if BOT_USERNAME:
-            url = f"https://t.me/{BOT_USERNAME}?start=get_{movie['id']}"
+            url = f"https://t.me/{BOT_USERNAME}?start=get_{movie.get('id') or str(movie['_id'])}"
             keyboard.append([InlineKeyboardButton(f"🎬 {btn_text}", url=url)])
         else:
-            keyboard.append([InlineKeyboardButton(f"🎬 {btn_text}", callback_data=f"get_{movie['id']}")])
+            keyboard.append([InlineKeyboardButton(f"🎬 {btn_text}", callback_data=f"get_{movie.get('id') or str(movie['_id'])}")])
         
     # Pagination Footer
     if total_pages > 1:
