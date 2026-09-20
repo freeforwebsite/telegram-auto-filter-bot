@@ -389,6 +389,14 @@ class StreamServer:
         
     </main>
 
+
+    <!-- Disclaimer -->
+    <div class="container mx-auto px-4 max-w-5xl mb-6">
+        <div class="text-center p-4 bg-slate-800/50 rounded-xl border border-slate-700/50 text-xs text-slate-400">
+            <strong>DMCA / Copyright Disclaimer:</strong> CineSearch does not host any files on its servers. We only index files that are freely available online and provided by non-affiliated third parties.
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer class="mt-auto py-6 border-t border-slate-800 text-center text-slate-500 text-sm">
         <p>&copy; 2026 CineSearch. Premium Telegram File Streaming.</p>
