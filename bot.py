@@ -403,7 +403,7 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     query = update.message.text
     # Ignore messages that are too short, or too long (like Welcome Messages and Admin announcements)
-    if not query or len(query) < 3 or len(query) > 60:
+    if not query or len(query) < 2 or len(query) > 60:
         return
         
     # 🔍 INSTANT FEEDBACK
