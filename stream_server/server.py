@@ -325,255 +325,198 @@ class StreamServer:
     <style>
         :root {{
             --bg: #0B0F19;
+            --panel: #111827;
             --primary: #3B82F6;
-            --primary-glow: rgba(59, 130, 246, 0.5);
             --text: #F3F4F6;
+            --text-muted: #9CA3AF;
         }}
         * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }}
-        body {{ background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }}
+        body {{ background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }}
         
         /* Navbar */
-        nav {{ display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background: #0B0F19; border-bottom: 1px solid rgba(255,255,255,0.05); position: sticky; top: 0; z-index: 50; }}
-        .brand {{ font-size: 1.5rem; font-weight: 800; letter-spacing: 0.5px; display: flex; align-items: center; gap: 10px; }}
+        nav {{ display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: rgba(17,24,39,0.8); border-bottom: 1px solid rgba(255,255,255,0.05); position: sticky; top: 0; z-index: 50; backdrop-filter: blur(10px); }}
+        .brand {{ display: flex; align-items: center; gap: 8px; font-size: 1.4rem; font-weight: bold; letter-spacing: 0.5px; }}
         .brand span {{ color: var(--primary); }}
+        .btn-join {{ background: var(--primary); color: white; text-decoration: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 6px; }}
         
-        main {{ flex: 1; max-width: 1200px; width: 100%; margin: 0 auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; }}
+        main {{ flex: 1; max-width: 1000px; width: 100%; margin: 0 auto; padding: 20px; display: flex; flex-direction: column; gap: 24px; position: relative; }}
         
-        /* Custom Video Player */
-        .video-container {{
-            position: relative;
-            width: 100%;
-            background: #000;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            aspect-ratio: 16/9;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        /* Fake Loading Screen */
+        #loaderScreen {{
+            position: absolute; top: 20px; left: 20px; right: 20px; background: #000; border-radius: 12px; z-index: 40;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            aspect-ratio: 16/9; box-shadow: 0 10px 30px rgba(0,0,0,0.8); transition: opacity 0.5s;
         }}
+        .spinner {{
+            width: 60px; height: 60px; border: 4px solid rgba(59,130,246,0.3); border-top-color: var(--primary);
+            border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;
+        }}
+        @keyframes spin {{ 100% {{ transform: rotate(360deg); }} }}
+        .loader-title {{ font-size: 1.5rem; font-weight: bold; margin-bottom: 8px; }}
+        .loader-sub {{ color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px; }}
+        .steps {{ display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-muted); }}
+        .step {{ background: rgba(255,255,255,0.1); padding: 6px 12px; border-radius: 6px; transition: all 0.3s; }}
+        .step.active {{ background: rgba(59,130,246,0.2); color: var(--primary); border: 1px solid rgba(59,130,246,0.4); }}
         
+        /* Video Container */
+        .video-wrapper {{
+            position: relative; width: 100%; background: #000; border-radius: 12px; overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8); aspect-ratio: 16/9; display: flex;
+        }}
         video {{ width: 100%; height: 100%; outline: none; }}
         
-        /* Controls Overlay */
-        .controls {{
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            background: linear-gradient(transparent, rgba(0,0,0,0.9));
-            padding: 20px 20px 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            opacity: 0;
-            transition: opacity 0.3s;
+        /* Double Tap Overlays */
+        .tap-left, .tap-right {{
+            position: absolute; top: 0; bottom: 0; width: 30%; z-index: 10;
+            display: flex; align-items: center; justify-content: center; pointer-events: none;
+            opacity: 0; transition: opacity 0.3s;
         }}
-        .video-container:hover .controls, .video-container.paused .controls {{ opacity: 1; }}
-        
-        /* Progress Bar */
-        .progress-container {{
-            width: 100%; height: 6px; background: rgba(255,255,255,0.2);
-            border-radius: 3px; cursor: pointer; position: relative;
-        }}
-        .progress-bar {{
-            height: 100%; background: var(--primary);
-            border-radius: 3px; width: 0%; position: relative;
-        }}
-        .progress-bar::after {{
-            content: ''; position: absolute; right: -6px; top: -4px;
-            width: 14px; height: 14px; background: #fff; border-radius: 50%;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5); transform: scale(0); transition: transform 0.2s;
-        }}
-        .progress-container:hover .progress-bar::after {{ transform: scale(1); }}
-        
-        /* Control Buttons */
-        .controls-main {{ display: flex; justify-content: space-between; align-items: center; }}
-        .controls-left, .controls-right {{ display: flex; align-items: center; gap: 16px; }}
-        
-        button.ctrl-btn {{
-            background: none; border: none; color: white; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            opacity: 0.9; transition: all 0.2s; padding: 4px;
-        }}
-        button.ctrl-btn:hover {{ opacity: 1; color: var(--primary); transform: scale(1.1); }}
-        button.ctrl-btn svg {{ width: 24px; height: 24px; fill: currentColor; }}
-        
-        .time-display {{ font-size: 0.85rem; font-weight: 500; font-family: monospace; letter-spacing: 0.5px; }}
-        
-        /* Double Tap Ripple */
-        .ripple-left, .ripple-right {{
-            position: absolute; top: 0; bottom: 0; width: 30%;
-            display: flex; align-items: center; justify-content: center;
-            pointer-events: none; opacity: 0; transition: opacity 0.3s;
-        }}
-        .ripple-left {{ left: 0; background: linear-gradient(90deg, rgba(255,255,255,0.1), transparent); }}
-        .ripple-right {{ right: 0; background: linear-gradient(-90deg, rgba(255,255,255,0.1), transparent); }}
-        
-        .ripple-text {{
-            background: rgba(0,0,0,0.6); padding: 10px 20px; border-radius: 20px;
-            font-weight: bold; display: flex; flex-direction: column; align-items: center; gap: 4px;
-        }}
+        .tap-left {{ left: 0; background: linear-gradient(90deg, rgba(255,255,255,0.15), transparent); }}
+        .tap-right {{ right: 0; background: linear-gradient(-90deg, rgba(255,255,255,0.15), transparent); }}
+        .tap-text {{ background: rgba(0,0,0,0.6); padding: 12px 20px; border-radius: 30px; font-weight: bold; display: flex; flex-direction: column; align-items: center; }}
         
         /* Details Panel */
-        .info-panel {{ background: #111827; padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }}
-        .movie-title {{ font-size: 1.5rem; margin-bottom: 16px; line-height: 1.4; }}
-        .btn-external {{
-            display: inline-flex; align-items: center; gap: 8px;
-            padding: 12px 20px; background: rgba(59, 130, 246, 0.1);
-            color: var(--primary); border: 1px solid rgba(59, 130, 246, 0.3);
-            border-radius: 8px; text-decoration: none; font-weight: 600;
-            margin-right: 12px; margin-bottom: 12px; transition: all 0.2s;
+        .details-panel {{ background: var(--panel); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }}
+        .badges {{ display: flex; gap: 10px; margin-bottom: 12px; font-size: 0.75rem; font-weight: bold; }}
+        .badge {{ background: rgba(59,130,246,0.15); color: #60A5FA; padding: 4px 10px; border-radius: 6px; }}
+        .title {{ font-size: 1.4rem; line-height: 1.4; margin-bottom: 20px; word-break: break-word; }}
+        
+        /* Buttons */
+        .btn-grid {{ display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }}
+        .btn {{
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 12px 16px; border-radius: 10px; font-weight: 600; font-size: 0.95rem;
+            text-decoration: none; cursor: pointer; transition: transform 0.2s; border: none; flex: 1; min-width: 180px;
         }}
-        .btn-external:hover {{ background: rgba(59, 130, 246, 0.2); transform: translateY(-2px); }}
+        .btn:hover {{ transform: translateY(-2px); }}
+        .btn svg {{ width: 20px; height: 20px; fill: currentColor; }}
+        
+        .btn-dl {{ background: rgba(16,185,129,0.15); color: #34D399; border: 1px solid rgba(16,185,129,0.3); }}
+        .btn-vlc {{ background: rgba(249,115,22,0.15); color: #FB923C; border: 1px solid rgba(249,115,22,0.3); }}
+        .btn-mx {{ background: rgba(59,130,246,0.15); color: #60A5FA; border: 1px solid rgba(59,130,246,0.3); }}
+        
+        .disclaimer {{ margin-top: 10px; padding: 16px; background: rgba(0,0,0,0.3); border-radius: 8px; font-size: 0.8rem; color: var(--text-muted); text-align: center; border: 1px solid rgba(255,255,255,0.02); }}
+        footer {{ text-align: center; padding: 20px; font-size: 0.85rem; color: var(--text-muted); }}
     </style>
 </head>
 <body>
 
     <nav>
         <div class="brand">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="#3B82F6"><path d="M8 5v14l11-7z"/></svg>
-            Cine<span>Search</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="#3B82F6"><path d="M8 5v14l11-7z"/></svg> Cine<span>Search</span>
         </div>
-        <a href="https://t.me/cinevalut" target="_blank" style="background: var(--primary); color: white; text-decoration: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 6px; transition: transform 0.2s;">
+        <a href="https://t.me/cinevalut" target="_blank" class="btn-join">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .24z"/></svg>
             Join Channel
         </a>
     </nav>
 
     <main>
-        <div class="video-container paused" id="videoContainer">
-            <video id="vid" playsinline>
+        <!-- Fake Loading Screen -->
+        <div id="loaderScreen">
+            <div class="spinner"></div>
+            <div class="loader-title">Getting Your Stream Ready</div>
+            <div class="loader-sub">Decrypting and verifying your file securely...</div>
+            <div class="steps">
+                <div class="step active" id="st1">1. Decrypting</div>
+                <div class="step" id="st2">2. Verifying</div>
+                <div class="step" id="st3">3. Streaming</div>
+            </div>
+        </div>
+
+        <!-- Video Player -->
+        <div class="video-wrapper">
+            <video id="vid" controls playsinline preload="auto">
                 <source src="/watch/{file_id}/{filename}" type="video/mp4">
             </video>
             
-            <div class="ripple-left" id="rippleLeft">
-                <div class="ripple-text"><svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg>-10s</div>
+            <div class="tap-left" id="tapLeft">
+                <div class="tap-text"><svg width="24" height="24" fill="white" viewBox="0 0 24 24"><path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg>-10s</div>
             </div>
-            <div class="ripple-right" id="rippleRight">
-                <div class="ripple-text"><svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>+10s</div>
-            </div>
-
-            <div class="controls">
-                <div class="progress-container" id="progressContainer">
-                    <div class="progress-bar" id="progressBar"></div>
-                </div>
-                
-                <div class="controls-main">
-                    <div class="controls-left">
-                        <button class="ctrl-btn" id="playBtn">
-                            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" id="playIcon"/></svg>
-                        </button>
-                        <button class="ctrl-btn" id="rewindBtn" title="Rewind 10s">
-                            <svg viewBox="0 0 24 24"><path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg>
-                        </button>
-                        <button class="ctrl-btn" id="forwardBtn" title="Forward 10s">
-                            <svg viewBox="0 0 24 24"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>
-                        </button>
-                        <span class="time-display" id="timeDisplay">00:00 / 00:00</span>
-                    </div>
-                    
-                    <div class="controls-right">
-                        <button class="ctrl-btn" id="pipBtn" title="Picture in Picture">
-                            <svg viewBox="0 0 24 24"><path d="M19 7h-8v6h8V7zm2-4H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16.01H3V4.98h18v14.03z"/></svg>
-                        </button>
-                        <button class="ctrl-btn" id="fsBtn" title="Fullscreen">
-                            <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-                        </button>
-                    </div>
-                </div>
+            <div class="tap-right" id="tapRight">
+                <div class="tap-text"><svg width="24" height="24" fill="white" viewBox="0 0 24 24"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>+10s</div>
             </div>
         </div>
 
-        <div class="info-panel">
-            <h2 class="movie-title">{display_name}</h2>
-            <button onclick="openExternal('vlc://' + window.location.origin + '/watch/{file_id}/{filename}')" class="btn-external">Open in VLC</button>
-            <button onclick="openExternal('intent:' + window.location.origin + '/watch/{file_id}/{filename}#Intent;package=com.mxtech.videoplayer.ad;end')" class="btn-external">Open in MX Player</button>
+        <div class="details-panel">
+            <div class="badges">
+                <div class="badge">HD STREAM</div>
+                <div class="badge">SECURE CONNECTION</div>
+                <div class="badge" style="background: rgba(16,185,129,0.15); color: #34D399;">MULTI-AUDIO</div>
+            </div>
+            <h1 class="title">{display_name}</h1>
+            
+            <div class="btn-grid">
+                <a href="/watch/{file_id}/{filename}" download="{filename}" class="btn btn-dl">
+                    <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> Download
+                </a>
+                <button onclick="openApp('vlc://' + window.location.origin + '/watch/{file_id}/{filename}')" class="btn btn-vlc">
+                    <svg viewBox="0 0 24 24"><path d="M12 2L1 21h22L12 2zm0 3.5l7.5 13.5H4.5L12 5.5zM12 8L6.5 17.5h11L12 8z"/></svg> VLC Player
+                </button>
+                <button onclick="openApp('intent:' + window.location.origin + '/watch/{file_id}/{filename}#Intent;package=com.mxtech.videoplayer.ad;end')" class="btn btn-mx">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg> MX Player
+                </button>
+            </div>
+            
+            <div class="disclaimer">
+                <strong>DMCA / Copyright Disclaimer:</strong> CineSearch does not host any files on its servers. We only index files that are freely available online and provided by non-affiliated third parties.
+            </div>
         </div>
     </main>
 
+    <footer>&copy; 2026 CineSearch. Premium Telegram File Streaming.</footer>
+
     <script>
-        function openExternal(url) {{
+        // Open External Apps
+        function openApp(url) {{
             window.location.href = url;
         }}
+
+        // Fake Loading Screen Logic
+        setTimeout(() => {{
+            document.getElementById('st1').classList.remove('active');
+            document.getElementById('st2').classList.add('active');
+        }}, 1000);
+        setTimeout(() => {{
+            document.getElementById('st2').classList.remove('active');
+            document.getElementById('st3').classList.add('active');
+        }}, 2000);
+        setTimeout(() => {{
+            document.getElementById('loaderScreen').style.opacity = '0';
+            setTimeout(() => {{
+                document.getElementById('loaderScreen').style.display = 'none';
+                document.getElementById('vid').play().catch(e => console.log(e));
+            }}, 500);
+        }}, 3000);
+
+        // Double Tap to Seek (Overlay on top of Native Controls)
         const vid = document.getElementById('vid');
-        const playBtn = document.getElementById('playBtn');
-        const playIcon = document.getElementById('playIcon');
-        const videoContainer = document.getElementById('videoContainer');
-        const progressContainer = document.getElementById('progressContainer');
-        const progressBar = document.getElementById('progressBar');
-        const timeDisplay = document.getElementById('timeDisplay');
-        const rewindBtn = document.getElementById('rewindBtn');
-        const forwardBtn = document.getElementById('forwardBtn');
-        const fsBtn = document.getElementById('fsBtn');
-        const pipBtn = document.getElementById('pipBtn');
-        
-        const rippleLeft = document.getElementById('rippleLeft');
-        const rippleRight = document.getElementById('rippleRight');
-
-        function togglePlay() {{
-            if (vid.paused) {{ vid.play(); }} else {{ vid.pause(); }}
-        }}
-
-        vid.addEventListener('play', () => {{
-            playIcon.setAttribute('d', 'M6 19h4V5H6v14zm8-14v14h4V5h-4z');
-            videoContainer.classList.remove('paused');
-        }});
-
-        vid.addEventListener('pause', () => {{
-            playIcon.setAttribute('d', 'M8 5v14l11-7z');
-            videoContainer.classList.add('paused');
-        }});
-
-        playBtn.addEventListener('click', togglePlay);
-        vid.addEventListener('click', togglePlay);
-
-        function formatTime(sec) {{
-            const h = Math.floor(sec / 3600);
-            const m = Math.floor((sec % 3600) / 60);
-            const s = Math.floor(sec % 60);
-            if(h > 0) return `${{h}}:${{m.toString().padStart(2,'0')}}:${{s.toString().padStart(2,'0')}}`;
-            return `${{m.toString().padStart(2,'0')}}:${{s.toString().padStart(2,'0')}}`;
-        }}
-
-        vid.addEventListener('timeupdate', () => {{
-            const pct = (vid.currentTime / vid.duration) * 100;
-            progressBar.style.width = pct + '%';
-            timeDisplay.textContent = `${{formatTime(vid.currentTime)}} / ${{formatTime(vid.duration || 0)}}`;
-        }});
-
-        progressContainer.addEventListener('click', (e) => {{
-            const rect = progressContainer.getBoundingClientRect();
-            const pos = (e.clientX - rect.left) / rect.width;
-            vid.currentTime = pos * vid.duration;
-        }});
-
-        function skip(amount) {{
-            vid.currentTime += amount;
-            const ripple = amount > 0 ? rippleRight : rippleLeft;
-            ripple.style.opacity = '1';
-            setTimeout(() => ripple.style.opacity = '0', 300);
-        }}
-
-        rewindBtn.addEventListener('click', () => skip(-10));
-        forwardBtn.addEventListener('click', () => skip(10));
-
-        fsBtn.addEventListener('click', () => {{
-            if (!document.fullscreenElement) {{ videoContainer.requestFullscreen(); }}
-            else {{ document.exitFullscreen(); }}
-        }});
-
-        pipBtn.addEventListener('click', async () => {{
-            if (document.pictureInPictureElement) {{ await document.exitPictureInPicture(); }}
-            else {{ await vid.requestPictureInPicture(); }}
-        }});
+        const tapLeft = document.getElementById('tapLeft');
+        const tapRight = document.getElementById('tapRight');
         
         let lastTap = 0;
-        vid.addEventListener('touchstart', (e) => {{
+        
+        // We add click listener to video wrapper so it catches taps on edges
+        // But native controls are at bottom, so edges are safe.
+        document.querySelector('.video-wrapper').addEventListener('click', (e) => {{
             const now = Date.now();
             if (now - lastTap < 300) {{
                 const rect = vid.getBoundingClientRect();
-                const x = e.touches[0].clientX - rect.left;
-                if (x > rect.width / 2) skip(10);
-                else skip(-10);
+                const x = e.clientX - rect.left;
+                
+                // Only trigger if tapping upper 80% of screen (avoiding native controls)
+                const y = e.clientY - rect.top;
+                if (y > rect.height * 0.8) return; 
+
+                if (x > rect.width / 2) {{
+                    vid.currentTime += 10;
+                    tapRight.style.opacity = '1';
+                    setTimeout(() => tapRight.style.opacity = '0', 300);
+                }} else {{
+                    vid.currentTime -= 10;
+                    tapLeft.style.opacity = '1';
+                    setTimeout(() => tapLeft.style.opacity = '0', 300);
+                }}
                 e.preventDefault();
             }}
             lastTap = now;
