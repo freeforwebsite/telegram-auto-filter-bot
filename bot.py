@@ -186,7 +186,11 @@ def search_movies(query):
     try:
         cursor = movies_collection.find({"$and": conditions})
         results = list(cursor)
-        return results
+        
+        # Filter out corrupt documents that don't have a file_id
+        valid_results = [r for r in results if r.get('file_id')]
+        
+        return valid_results
     except Exception as e:
         print(f"MongoDB Search Error: {e}")
         return []
@@ -230,15 +234,15 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     try:
                         await context.bot.copy_message(
                             chat_id=update.effective_chat.id,
-                            from_chat_id=movie['source_chat_id'],
-                            message_id=movie['source_message_id'],
+                            from_chat_id=movie.get('source_chat_id'),
+                            message_id=movie.get('source_message_id'),
                             reply_markup=get_watch_keyboard(movie)
                         )
                     except Exception as e:
                         try:
                             await context.bot.send_document(
                                 chat_id=update.effective_chat.id,
-                                document=movie['file_id'],
+                                document=movie.get('file_id'),
                                 caption=movie.get('caption', ''),
                                 parse_mode='HTML',
                                 reply_markup=get_watch_keyboard(movie)
@@ -603,8 +607,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             try:
                 await context.bot.copy_message(
                     chat_id=user_id,
-                    from_chat_id=movie['source_chat_id'],
-                    message_id=movie['source_message_id'],
+                    from_chat_id=movie.get('source_chat_id'),
+                    message_id=movie.get('source_message_id'),
                     reply_markup=get_watch_keyboard(movie)
                 )
                 await query.answer("✅ File sent to your Private Messages!", show_alert=True)
@@ -615,7 +619,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 try:
                     await context.bot.send_document(
                         chat_id=user_id,
-                        document=movie['file_id'],
+                        document=movie.get('file_id'),
                         caption=movie.get('caption', ''),
                         parse_mode='HTML',
                         reply_markup=get_watch_keyboard(movie)
