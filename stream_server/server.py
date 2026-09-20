@@ -323,63 +323,148 @@ class StreamServer:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CineSearch | {display_name}</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {{
-            --bg: #0B0F19;
-            --panel: #111827;
-            --text: #F3F4F6;
-            --text-muted: #9CA3AF;
-            --accent: #2563EB;
-            --accent-hover: #1D4ED8;
-            --border: #1F2937;
+            --bg-color: #050510;
+            --panel-bg: rgba(15, 20, 35, 0.6);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --accent-primary: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.5);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
         }}
-        * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }}
-        body {{ background-color: var(--bg); color: var(--text); display: flex; flex-direction: column; min-height: 100vh; line-height: 1.5; }}
+        
+        * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }}
+        
+        body {{ 
+            background-color: var(--bg-color); 
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.12), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.12), transparent 25%);
+            color: var(--text-main); 
+            display: flex; 
+            flex-direction: column; 
+            min-height: 100vh; 
+            line-height: 1.6; 
+            overflow-x: hidden;
+        }}
         
         /* Navbar */
-        nav {{ display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background: rgba(17, 24, 39, 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 50; }}
-        .nav-brand {{ display: flex; align-items: center; gap: 12px; }}
-        .nav-logo {{ width: 40px; height: 40px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 15px rgba(37,99,235,0.4); }}
-        .nav-title {{ font-size: 1.25rem; font-weight: 700; letter-spacing: 0.5px; }}
-        .nav-title span {{ color: #3B82F6; }}
-        .btn-join {{ background: var(--accent); color: white; text-decoration: none; padding: 8px 20px; border-radius: 999px; font-size: 0.875rem; font-weight: 500; transition: background 0.2s; display: flex; align-items: center; gap: 8px; }}
-        .btn-join:hover {{ background: var(--accent-hover); }}
+        nav {{ 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 16px 5%; background: rgba(5, 5, 16, 0.8); 
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color); 
+            position: sticky; top: 0; z-index: 50; 
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        }}
+        .nav-brand {{ display: flex; align-items: center; gap: 14px; }}
+        .nav-logo {{ 
+            width: 44px; height: 44px; border-radius: 12px; 
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6); 
+            display: flex; align-items: center; justify-content: center; 
+            box-shadow: 0 0 20px var(--accent-glow);
+        }}
+        .nav-title {{ font-size: 1.4rem; font-weight: 700; letter-spacing: 0.5px; }}
+        .nav-title span {{ background: linear-gradient(to right, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }}
+        .btn-join {{ 
+            background: linear-gradient(135deg, #2563eb, #4f46e5); color: white; 
+            text-decoration: none; padding: 10px 24px; border-radius: 999px; 
+            font-size: 0.9rem; font-weight: 500; transition: all 0.3s ease; 
+            display: flex; align-items: center; gap: 8px;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+        }}
+        .btn-join:hover {{ transform: translateY(-2px); box-shadow: 0 6px 20px rgba(37, 99, 235, 0.6); }}
         
         /* Main Container */
-        main {{ flex: 1; width: 100%; max-width: 1024px; margin: 0 auto; padding: 32px 16px; display: flex; flex-direction: column; gap: 24px; }}
+        main {{ flex: 1; width: 100%; max-width: 1100px; margin: 0 auto; padding: 40px 20px; display: flex; flex-direction: column; gap: 30px; }}
         
         /* Player */
-        .player-container {{ width: 100%; background: #000; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border: 1px solid var(--border); aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; }}
+        .player-container {{ 
+            width: 100%; background: #000; border-radius: 20px; overflow: hidden; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.7), 0 0 0 1px var(--border-color);
+            aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; 
+            position: relative;
+        }}
         video {{ width: 100%; height: 100%; object-fit: contain; }}
         video::-webkit-media-controls-panel {{ background-image: linear-gradient(transparent, rgba(0,0,0,0.8)); }}
         
         /* Details Panel */
-        .details-panel {{ background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }}
-        .details-header {{ display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; align-items: flex-start; }}
-        .badges {{ display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }}
-        .badge-hd {{ background: rgba(59,130,246,0.1); color: #60A5FA; padding: 4px 12px; border-radius: 6px; border: 1px solid rgba(59,130,246,0.2); font-size: 0.75rem; font-weight: 700; }}
-        .badge-secure {{ color: var(--text-muted); font-size: 0.875rem; }}
-        .movie-title {{ font-size: 1.5rem; font-weight: 700; word-break: break-word; line-height: 1.3; }}
+        .details-panel {{ 
+            background: var(--panel-bg); 
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color); 
+            border-radius: 24px; padding: 32px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }}
+        
+        .badges {{ display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }}
+        .badge-hd {{ 
+            background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(139,92,246,0.2)); 
+            color: #93c5fd; padding: 6px 14px; border-radius: 8px; 
+            border: 1px solid rgba(147, 197, 253, 0.2); font-size: 0.75rem; font-weight: 700; letter-spacing: 1px; 
+            box-shadow: 0 0 10px rgba(59,130,246,0.2);
+        }}
+        .badge-secure {{ color: var(--text-muted); font-size: 0.85rem; display: flex; align-items: center; gap: 6px; font-weight: 500; }}
+        .badge-secure i {{ color: #10b981; }}
+        
+        .movie-title {{ font-size: 1.6rem; font-weight: 600; word-break: break-word; line-height: 1.4; margin-bottom: 24px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }}
         
         /* Buttons */
-        .external-actions {{ display: flex; gap: 12px; flex-wrap: wrap; }}
-        .btn-external {{ display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-radius: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s; font-size: 0.95rem; }}
-        .btn-vlc {{ background: rgba(249,115,22,0.1); color: #FB923C; border: 1px solid rgba(249,115,22,0.2); }}
-        .btn-vlc:hover {{ background: rgba(249,115,22,0.2); }}
-        .btn-mx {{ background: rgba(59,130,246,0.1); color: #60A5FA; border: 1px solid rgba(59,130,246,0.2); }}
-        .btn-mx:hover {{ background: rgba(59,130,246,0.2); }}
+        .external-actions {{ display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; }}
+        .btn-external {{ 
+            display: flex; align-items: center; justify-content: center; gap: 10px; 
+            padding: 14px 24px; border-radius: 14px; font-weight: 600; 
+            cursor: pointer; transition: all 0.3s ease; font-size: 0.95rem; flex: 1; min-width: 200px;
+            backdrop-filter: blur(5px);
+        }}
+        .btn-vlc {{ 
+            background: linear-gradient(135deg, rgba(249,115,22,0.15), rgba(234,88,12,0.15)); 
+            color: #fed7aa; border: 1px solid rgba(249,115,22,0.3); 
+            box-shadow: 0 4px 15px rgba(249,115,22,0.1);
+        }}
+        .btn-vlc:hover {{ background: rgba(249,115,22,0.25); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(249,115,22,0.2); }}
+        .btn-vlc i {{ color: #f97316; font-size: 1.1rem; }}
+        
+        .btn-mx {{ 
+            background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(37,99,235,0.15)); 
+            color: #bfdbfe; border: 1px solid rgba(59,130,246,0.3); 
+            box-shadow: 0 4px 15px rgba(59,130,246,0.1);
+        }}
+        .btn-mx:hover {{ background: rgba(59,130,246,0.25); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59,130,246,0.2); }}
+        .btn-mx i {{ color: #3b82f6; font-size: 1.1rem; }}
         
         /* Footer Area */
-        .troubleshoot {{ margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; font-size: 0.875rem; color: var(--text-muted); }}
-        .btn-refresh {{ background: none; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.875rem; }}
-        .btn-refresh:hover {{ color: white; }}
+        .troubleshoot {{ 
+            margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-color); 
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; 
+            font-size: 0.9rem; color: var(--text-muted); 
+        }}
+        .btn-refresh {{ 
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); 
+            color: var(--text-main); cursor: pointer; display: flex; align-items: center; gap: 8px; 
+            font-size: 0.85rem; padding: 8px 16px; border-radius: 8px; transition: all 0.2s;
+        }}
+        .btn-refresh:hover {{ background: rgba(255,255,255,0.1); }}
         
-        .disclaimer-box {{ text-align: center; padding: 16px; background: rgba(31,41,55,0.5); border-radius: 12px; border: 1px solid rgba(55,65,81,0.5); font-size: 0.75rem; color: var(--text-muted); margin-bottom: 24px; }}
-        footer {{ text-align: center; padding: 24px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.875rem; margin-top: auto; }}
+        .disclaimer-box {{ 
+            text-align: center; padding: 20px; 
+            background: linear-gradient(to right, rgba(31,41,55,0.2), rgba(31,41,55,0.6), rgba(31,41,55,0.2)); 
+            border-top: 1px solid rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.03); 
+            font-size: 0.8rem; color: #64748b; margin-bottom: 10px; line-height: 1.6;
+        }}
+        .disclaimer-box strong {{ color: #94a3b8; font-weight: 600; }}
+        
+        footer {{ text-align: center; padding: 30px 20px; color: #475569; font-size: 0.85rem; margin-top: auto; }}
         
         @media (max-width: 640px) {{
-            .movie-title {{ font-size: 1.25rem; }}
-            .details-panel {{ padding: 16px; }}
+            .movie-title {{ font-size: 1.3rem; margin-bottom: 20px; }}
+            .details-panel {{ padding: 20px; border-radius: 20px; }}
+            .btn-external {{ width: 100%; }}
+            .troubleshoot {{ flex-direction: column; text-align: center; justify-content: center; }}
+            nav {{ padding: 16px 20px; }}
         }}
     </style>
 </head>
@@ -388,7 +473,7 @@ class StreamServer:
     <nav>
         <div class="nav-brand">
             <div class="nav-logo">
-                <i class="fas fa-play" style="color: white; font-size: 0.875rem;"></i>
+                <i class="fas fa-play" style="color: white; font-size: 1rem;"></i>
             </div>
             <h1 class="nav-title">Cine<span>Search</span></h1>
         </div>
@@ -406,29 +491,26 @@ class StreamServer:
         </div>
 
         <div class="details-panel">
-            <div class="details-header">
-                <div style="flex: 1; min-width: 250px;">
-                    <div class="badges">
-                        <span class="badge-hd">HD STREAM</span>
-                        <span class="badge-secure"><i class="fas fa-shield-alt" style="margin-right:4px;"></i> Secure Connection</span>
-                    </div>
-                    <h2 class="movie-title">{display_name}</h2>
-                </div>
-                
-                <div class="external-actions">
-                    <button onclick="openExternal('vlc://' + window.location.origin + '/watch/{file_id}/{filename}')" class="btn-external btn-vlc">
-                        <i class="fas fa-traffic-cone"></i> Open in VLC
-                    </button>
-                    <button onclick="openExternal('intent:' + window.location.origin + '/watch/{file_id}/{filename}#Intent;package=com.mxtech.videoplayer.ad;end')" class="btn-external btn-mx">
-                        <i class="fas fa-play-circle"></i> Open in MX Player
-                    </button>
-                </div>
+            <div class="badges">
+                <span class="badge-hd"><i class="fas fa-bolt" style="margin-right: 4px;"></i> HD STREAM</span>
+                <span class="badge-secure"><i class="fas fa-shield-check"></i> 256-bit Secure Connection</span>
+            </div>
+            
+            <h2 class="movie-title">{display_name}</h2>
+            
+            <div class="external-actions">
+                <button onclick="openExternal('vlc://' + window.location.origin + '/watch/{file_id}/{filename}')" class="btn-external btn-vlc">
+                    <i class="fas fa-traffic-cone"></i> <span>Open in VLC Player</span>
+                </button>
+                <button onclick="openExternal('intent:' + window.location.origin + '/watch/{file_id}/{filename}#Intent;package=com.mxtech.videoplayer.ad;end')" class="btn-external btn-mx">
+                    <i class="fas fa-play-circle"></i> <span>Open in MX Player</span>
+                </button>
             </div>
             
             <div class="troubleshoot">
-                <p>Having playback issues? Try opening in an external player.</p>
+                <p>Having playback issues? Try opening the stream in an external player.</p>
                 <button onclick="window.location.reload()" class="btn-refresh">
-                    <i class="fas fa-sync-alt"></i> Refresh Player
+                    <i class="fas fa-sync-alt"></i> Reload Stream
                 </button>
             </div>
         </div>
