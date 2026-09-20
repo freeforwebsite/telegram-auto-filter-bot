@@ -309,7 +309,10 @@ class StreamServer:
         encoded_filename = urllib.parse.quote(filename)
         return await self._player_page_impl(file_id, encoded_filename)
 
-    async def _player_page_impl(self, file_id, filename):
+    async def _player_page_impl(self, file_id, filename, display_name=None):
+        import urllib.parse
+        if display_name is None:
+            display_name = urllib.parse.unquote(filename)
         
         # We will load the sleek HTML player here
         html_content = f"""
@@ -318,87 +321,124 @@ class StreamServer:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CineSearch | {filename}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>CineSearch | {display_name}</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body {{ background-color: #0f172a; color: #f8fafc; font-family: 'Segoe UI', system-ui, sans-serif; }}
-        .glass-panel {{ background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }}
-        .play-btn {{ transition: all 0.2s ease; }}
-        .play-btn:hover {{ transform: scale(1.05); }}
+        :root {{
+            --bg: #0B0F19;
+            --panel: #111827;
+            --text: #F3F4F6;
+            --text-muted: #9CA3AF;
+            --accent: #2563EB;
+            --accent-hover: #1D4ED8;
+            --border: #1F2937;
+        }}
+        * {{ box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }}
+        body {{ background-color: var(--bg); color: var(--text); display: flex; flex-direction: column; min-height: 100vh; line-height: 1.5; }}
+        
+        /* Navbar */
+        nav {{ display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background: rgba(17, 24, 39, 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 50; }}
+        .nav-brand {{ display: flex; align-items: center; gap: 12px; }}
+        .nav-logo {{ width: 40px; height: 40px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 15px rgba(37,99,235,0.4); }}
+        .nav-title {{ font-size: 1.25rem; font-weight: 700; letter-spacing: 0.5px; }}
+        .nav-title span {{ color: #3B82F6; }}
+        .btn-join {{ background: var(--accent); color: white; text-decoration: none; padding: 8px 20px; border-radius: 999px; font-size: 0.875rem; font-weight: 500; transition: background 0.2s; display: flex; align-items: center; gap: 8px; }}
+        .btn-join:hover {{ background: var(--accent-hover); }}
+        
+        /* Main Container */
+        main {{ flex: 1; width: 100%; max-width: 1024px; margin: 0 auto; padding: 32px 16px; display: flex; flex-direction: column; gap: 24px; }}
+        
+        /* Player */
+        .player-container {{ width: 100%; background: #000; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border: 1px solid var(--border); aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; }}
+        video {{ width: 100%; height: 100%; object-fit: contain; }}
         video::-webkit-media-controls-panel {{ background-image: linear-gradient(transparent, rgba(0,0,0,0.8)); }}
+        
+        /* Details Panel */
+        .details-panel {{ background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }}
+        .details-header {{ display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; align-items: flex-start; }}
+        .badges {{ display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }}
+        .badge-hd {{ background: rgba(59,130,246,0.1); color: #60A5FA; padding: 4px 12px; border-radius: 6px; border: 1px solid rgba(59,130,246,0.2); font-size: 0.75rem; font-weight: 700; }}
+        .badge-secure {{ color: var(--text-muted); font-size: 0.875rem; }}
+        .movie-title {{ font-size: 1.5rem; font-weight: 700; word-break: break-word; line-height: 1.3; }}
+        
+        /* Buttons */
+        .external-actions {{ display: flex; gap: 12px; flex-wrap: wrap; }}
+        .btn-external {{ display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-radius: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s; font-size: 0.95rem; }}
+        .btn-vlc {{ background: rgba(249,115,22,0.1); color: #FB923C; border: 1px solid rgba(249,115,22,0.2); }}
+        .btn-vlc:hover {{ background: rgba(249,115,22,0.2); }}
+        .btn-mx {{ background: rgba(59,130,246,0.1); color: #60A5FA; border: 1px solid rgba(59,130,246,0.2); }}
+        .btn-mx:hover {{ background: rgba(59,130,246,0.2); }}
+        
+        /* Footer Area */
+        .troubleshoot {{ margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; font-size: 0.875rem; color: var(--text-muted); }}
+        .btn-refresh {{ background: none; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.875rem; }}
+        .btn-refresh:hover {{ color: white; }}
+        
+        .disclaimer-box {{ text-align: center; padding: 16px; background: rgba(31,41,55,0.5); border-radius: 12px; border: 1px solid rgba(55,65,81,0.5); font-size: 0.75rem; color: var(--text-muted); margin-bottom: 24px; }}
+        footer {{ text-align: center; padding: 24px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.875rem; margin-top: auto; }}
+        
+        @media (max-width: 640px) {{
+            .movie-title {{ font-size: 1.25rem; }}
+            .details-panel {{ padding: 16px; }}
+        }}
     </style>
 </head>
-<body class="min-h-screen flex flex-col antialiased">
+<body>
     
-    <!-- Navbar -->
-    <nav class="glass-panel sticky top-0 z-50 px-6 py-4 flex justify-between items-center shadow-lg">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center shadow-[0_0_15px_rgba(37,99,235,0.5)]">
-                <i class="fas fa-play text-white text-sm"></i>
+    <nav>
+        <div class="nav-brand">
+            <div class="nav-logo">
+                <i class="fas fa-play" style="color: white; font-size: 0.875rem;"></i>
             </div>
-            <h1 class="text-xl font-bold tracking-wider text-white">Cine<span class="text-blue-500">Search</span></h1>
+            <h1 class="nav-title">Cine<span>Search</span></h1>
         </div>
-        <a href="https://t.me/CineSearch" target="_blank" class="px-5 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition shadow-lg flex items-center">
-            <i class="fab fa-telegram-plane mr-2"></i> Join Channel
+        <a href="https://t.me/CineSearch" target="_blank" class="btn-join">
+            <i class="fab fa-telegram-plane"></i> Join Channel
         </a>
     </nav>
 
-    <!-- Main Content -->
-    <main class="flex-grow container mx-auto px-4 py-8 max-w-5xl flex flex-col">
-        
-        <!-- Video Player Container -->
-        <div class="w-full bg-black rounded-2xl overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-slate-800 relative aspect-video flex items-center justify-center">
-            
-            <video id="vid" class="w-full h-full object-contain bg-black" controls preload="auto" playsinline>
+    <main>
+        <div class="player-container">
+            <video id="vid" controls preload="auto" playsinline>
                 <source src="/watch/{file_id}/{filename}" type="video/mp4">
                 Your browser does not support HTML5 video.
             </video>
-            
         </div>
 
-        <!-- Video Details -->
-        <div class="mt-6 glass-panel rounded-2xl p-6 md:p-8">
-            <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                <div class="flex-1">
-                    <div class="flex items-center gap-3 mb-3">
-                        <span class="px-3 py-1 bg-blue-500/20 text-blue-400 text-xs font-bold rounded-md border border-blue-500/30">HD STREAM</span>
-                        <span class="text-slate-400 text-sm"><i class="fas fa-shield-alt mr-1"></i> Secure Connection</span>
+        <div class="details-panel">
+            <div class="details-header">
+                <div style="flex: 1; min-width: 250px;">
+                    <div class="badges">
+                        <span class="badge-hd">HD STREAM</span>
+                        <span class="badge-secure"><i class="fas fa-shield-alt" style="margin-right:4px;"></i> Secure Connection</span>
                     </div>
-                    <h2 class="text-2xl md:text-3xl font-bold text-white leading-tight break-words">{filename}</h2>
+                    <h2 class="movie-title">{display_name}</h2>
                 </div>
                 
-                <!-- External Player Options -->
-                <div class="flex flex-wrap gap-3 md:w-auto shrink-0">
-                    <button onclick="openExternal('vlc://' + window.location.origin + '/watch/{file_id}/{filename}')" class="flex items-center gap-2 px-4 py-3 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 text-orange-400 font-medium transition">
+                <div class="external-actions">
+                    <button onclick="openExternal('vlc://' + window.location.origin + '/watch/{file_id}/{filename}')" class="btn-external btn-vlc">
                         <i class="fas fa-traffic-cone"></i> Open in VLC
                     </button>
-                    <button onclick="openExternal('intent:' + window.location.origin + '/watch/{file_id}/{filename}#Intent;package=com.mxtech.videoplayer.ad;end')" class="flex items-center gap-2 px-4 py-3 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 font-medium transition">
+                    <button onclick="openExternal('intent:' + window.location.origin + '/watch/{file_id}/{filename}#Intent;package=com.mxtech.videoplayer.ad;end')" class="btn-external btn-mx">
                         <i class="fas fa-play-circle"></i> Open in MX Player
                     </button>
                 </div>
             </div>
             
-            <div class="mt-6 pt-6 border-t border-slate-700/50 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-slate-400">
+            <div class="troubleshoot">
                 <p>Having playback issues? Try opening in an external player.</p>
-                <button onclick="window.location.reload()" class="hover:text-white transition flex items-center gap-2">
+                <button onclick="window.location.reload()" class="btn-refresh">
                     <i class="fas fa-sync-alt"></i> Refresh Player
                 </button>
             </div>
         </div>
         
-    </main>
-
-
-    <!-- Disclaimer -->
-    <div class="container mx-auto px-4 max-w-5xl mb-6">
-        <div class="text-center p-4 bg-slate-800/50 rounded-xl border border-slate-700/50 text-xs text-slate-400">
+        <div class="disclaimer-box">
             <strong>DMCA / Copyright Disclaimer:</strong> CineSearch does not host any files on its servers. We only index files that are freely available online and provided by non-affiliated third parties.
         </div>
-    </div>
+    </main>
 
-    <!-- Footer -->
-    <footer class="mt-auto py-6 border-t border-slate-800 text-center text-slate-500 text-sm">
+    <footer>
         <p>&copy; 2026 CineSearch. Premium Telegram File Streaming.</p>
     </footer>
 
@@ -406,7 +446,6 @@ class StreamServer:
         function openExternal(url) {{
             window.location.href = url;
         }}
-        
         document.addEventListener('DOMContentLoaded', () => {{
             const vid = document.getElementById('vid');
             vid.load();
