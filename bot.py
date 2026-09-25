@@ -331,7 +331,7 @@ def build_paginated_keyboard(results, page, query):
     keyboard.append([InlineKeyboardButton("⬆️ SELECT OPTION HERE ⬆️", callback_data="ignore")])
     
     for movie in page_results:
-        btn_text = movie['file_name']
+        btn_text = movie.get('file_name', 'Unknown Video')
         if len(btn_text) > 40:
             btn_text = btn_text[:37] + "..."
         
