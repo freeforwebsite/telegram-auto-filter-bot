@@ -537,6 +537,10 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not query or len(query.strip()) < 2:
         return
 
+    # Do not treat URLs, web links, or domains as movie search queries
+    if re.search(r'(https?://|www\.|\.com\b|\.org\b|\.net\b|\.in\b|t\.me/|telegram\.me/)', query, re.IGNORECASE):
+        return
+
     # Check custom manual keyword filters first
     clean_k = query.strip().lower()
     if filters_collection is not None:
@@ -649,6 +653,10 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     search_time = round(end_time - start_time, 3)
 
     if not results:
+        # In groups: stay completely silent when no movie is found to avoid spam
+        if is_group:
+            return
+
         # In private chat only: send not found guide
         try:
             if scrape_queue is not None:
