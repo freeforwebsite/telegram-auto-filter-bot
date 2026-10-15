@@ -527,29 +527,46 @@ async def delete_after(message, seconds):
     except Exception:
         pass
 
-async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    track_user(update.effective_user)
-    # Only listen in groups, supergroups, and private messages (ignore channels)
-    if update.effective_chat.type == 'channel':
-        return
+CONVERSATIONAL_WORDS = {
+    "hi", "hello", "hey", "bro", "bhai", "admin", "admins", "please", "plz", "pls",
+    "thanks", "thank", "thx", "tq", "ok", "okay", "yes", "no", "how", "what",
+    "where", "why", "who", "when", "which", "can", "could", "would", "is", "are",
+    "am", "was", "were", "do", "does", "did", "have", "has", "had", "only",
+    "available", "rules", "rule", "welcome", "good", "morning", "night", "super",
+    "nice", "awesome", "lol", "wait", "done", "help", "need", "give", "send",
+    "link", "channel", "group", "bot", "movie", "movies", "check", "sir", "ott",
+    "here", "there", "anyone", "someone", "tell", "say", "know", "new", "all",
+    "post", "upload", "update", "working", "problem", "issue", "chat", "msg",
+    "download", "links", "linke"
+}
+
+def is_conversational_text(text: str) -> bool:
+    """Detects whether text is casual conversational chat rather than a movie title query."""
+    if not text:
+        return True
+    cleaned = re.sub(r'[^a-zA-Z0-9\s]', ' ', text).lower().strip()
+    words = cleaned.split()
+    if not words:
+        return True
+    
+    # Single conversational word (e.g. "hi", "ok", "hello", "rules", "only")
+    if len(words) == 1 and words[0] in CONVERSATIONAL_WORDS:
+        return True
+    
+    # First word starts with question words or greeting words
+    if words[0] in {"how", "what", "where", "why", "who", "when", "which", "can", "could", "would", "is", "are", "do", "does", "did", "hi", "hello", "hey", "please", "plz", "only", "will"}:
+        return True
         
-    query = update.message.text
-    if not query or len(query.strip()) < 2:
-        return
+    # High proportion of conversational words or conversational sentence
+    match_count = sum(1 for w in words if w in CONVERSATIONAL_WORDS)
+    if len(words) >= 5 and match_count >= 1:
+        return True
+    if len(words) > 2 and (match_count / len(words)) >= 0.33:
+        return True
+        
+    return False
 
-    # Do not treat URLs, web links, or domains as movie search queries
-    if re.search(r'(https?://|www\.|\.com\b|\.org\b|\.net\b|\.in\b|t\.me/|telegram\.me/)', query, re.IGNORECASE):
-        return
-
-    # Check custom manual keyword filters first
-    clean_k = query.strip().lower()
-    if filters_collection is not None:
-        custom = filters_collection.find_one({"keyword": clean_k})
-        if custom:
-            await update.message.reply_text(custom.get("reply_text", ""), parse_mode="Markdown")
-            return
-
-    # Ignore messages that are too short, or too long (like Welcome Messages and Admin announcements)
+async def execute_movie_search(update: Update, context: ContextTypes.DEFAULT_TYPE, query: str, is_explicit_command: bool = False):
     is_group = (update.effective_chat.type != 'private')
     msg_id = update.message.message_id
     chat_id = update.effective_chat.id
@@ -566,7 +583,6 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if is_group:
         if instance_key == "2":
             # 1st Preference: New AutoFilter Bot
-            # IMMEDIATELY acquire atomic lock in shared MongoDB BEFORE executing search
             if shared_coord_col is not None:
                 try:
                     shared_coord_col.update_one(
@@ -577,11 +593,9 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 except Exception:
                     pass
 
-            # Perform the database search
             results = search_movies(query)
 
             if not results:
-                # No files found in New Bot! Release lock immediately so 170k Bot takes over instantly!
                 if shared_coord_col is not None:
                     try:
                         shared_coord_col.update_one(
@@ -591,22 +605,21 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         )
                     except Exception:
                         pass
-                return  # Stay completely silent in group
-
-            # Files found! Claim this message permanently
-            if shared_coord_col is not None:
-                try:
-                    shared_coord_col.update_one(
-                        {"_id": coord_key},
-                        {"$set": {"status": "handled", "by": "bot_2", "count": len(results), "done_time": time.time()}},
-                        upsert=True
-                    )
-                except Exception:
-                    pass
+                if not is_explicit_command:
+                    return  # Stay completely silent in group on passive messages
+            else:
+                if shared_coord_col is not None:
+                    try:
+                        shared_coord_col.update_one(
+                            {"_id": coord_key},
+                            {"$set": {"status": "handled", "by": "bot_2", "count": len(results), "done_time": time.time()}},
+                            upsert=True
+                        )
+                    except Exception:
+                        pass
 
         elif instance_key == "1":
             # 2nd Preference: 170k Legacy Bot
-            # Poll shared_coord_col up to 4.5 seconds (checking every 0.25s) to let 1st preference Bot 2 respond
             for _ in range(18):  # 18 * 0.25s = 4.5s max
                 await asyncio.sleep(0.25)
                 if shared_coord_col is not None:
@@ -615,35 +628,32 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         if entry:
                             st = entry.get("status")
                             if st == "handled" or entry.get("handled"):
-                                # Bot 2 found files and replied! 170k Bot stays 100% silent!
                                 return
                             elif st == "no_results":
-                                # Bot 2 has no files! 170k Bot wakes up IMMEDIATELY!
                                 break
                     except Exception:
                         pass
 
-            # Search fallback in 170k Legacy database
             results = search_movies(query)
             if not results:
-                return  # Silent if no results
-
-            # Double check before replying that Bot 2 didn't just finish
-            if shared_coord_col is not None:
-                try:
-                    entry = shared_coord_col.find_one({"_id": coord_key})
-                    if entry and (entry.get("status") == "handled" or entry.get("handled")):
-                        return
-                    shared_coord_col.update_one(
-                        {"_id": coord_key},
-                        {"$set": {"status": "handled", "by": "bot_1", "count": len(results), "done_time": time.time()}},
-                        upsert=True
-                    )
-                except Exception:
-                    pass
+                if not is_explicit_command:
+                    return  # Silent if no results on passive text
+            else:
+                if shared_coord_col is not None:
+                    try:
+                        entry = shared_coord_col.find_one({"_id": coord_key})
+                        if entry and (entry.get("status") == "handled" or entry.get("handled")):
+                            return
+                        shared_coord_col.update_one(
+                            {"_id": coord_key},
+                            {"$set": {"status": "handled", "by": "bot_1", "count": len(results), "done_time": time.time()}},
+                            upsert=True
+                        )
+                    except Exception:
+                        pass
         else:
             results = search_movies(query)
-            if not results:
+            if not results and not is_explicit_command:
                 return
     else:
         # In Private Messages: Always search directly
@@ -653,11 +663,23 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     search_time = round(end_time - start_time, 3)
 
     if not results:
-        # In groups: stay completely silent when no movie is found to avoid spam
-        if is_group:
+        # In groups on passive messages: stay completely silent!
+        if is_group and not is_explicit_command:
             return
 
-        # In private chat only: send not found guide
+        # If user explicitly used command in group, notify cleanly
+        if is_group and is_explicit_command:
+            clean_q = query.strip()
+            not_found_group = (
+                f"❌ **Movie Not Found!**\n\n"
+                f"No files found matching: `{clean_q}`\n\n"
+                f"💡 *You can request it using `/request {clean_q}`!*"
+            )
+            sent = await update.message.reply_text(not_found_group, parse_mode="Markdown")
+            asyncio.create_task(delete_after(sent, 60))
+            return
+
+        # In private chat only: send not found guide & queue to scraper
         try:
             if scrape_queue is not None:
                 import datetime
@@ -726,6 +748,76 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Auto-delete BOTH the user's message and bot's message after 300s (5 mins) in group
         asyncio.create_task(delete_after(update.message, 300))
         asyncio.create_task(delete_after(sent_msg, 300))
+
+async def movie_command_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Dedicated search command: /find <movie> or /movie <movie> or /search <movie>
+    """
+    if update.effective_user and update.effective_user.is_bot:
+        return
+    if update.message.sender_chat:
+        return
+
+    track_user(update.effective_user)
+
+    query = ""
+    if context.args:
+        query = " ".join(context.args).strip()
+    elif update.message.text:
+        parts = update.message.text.split(None, 1)
+        if len(parts) > 1:
+            query = parts[1].strip()
+
+    if not query:
+        msg = await update.message.reply_text(
+            "🎬 **Movie Search Command:**\n\n"
+            "Use `/find <Movie Name>` or `/movie <Movie Name>`\n"
+            "• *Example:* `/find Leo 2023`\n"
+            "• *Example:* `/movie Inception`",
+            parse_mode="Markdown"
+        )
+        if update.effective_chat.type != 'private':
+            asyncio.create_task(delete_after(msg, 30))
+        return
+
+    await execute_movie_search(update, context, query, is_explicit_command=True)
+
+async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # 1. Never respond to bots (Welcome bot, Guard bot, Request bot, etc.)
+    if update.effective_user and update.effective_user.is_bot:
+        return
+
+    # 2. Never respond to anonymous admin / channel posts
+    if update.message.sender_chat:
+        return
+
+    track_user(update.effective_user)
+    # Only listen in groups, supergroups, and private messages (ignore channels)
+    if update.effective_chat.type == 'channel':
+        return
+        
+    query = update.message.text
+    if not query or len(query.strip()) < 2:
+        return
+
+    # Do not treat URLs, web links, or domains as movie search queries
+    if re.search(r'(https?://|www\.|\.com\b|\.org\b|\.net\b|\.in\b|t\.me/|telegram\.me/)', query, re.IGNORECASE):
+        return
+
+    # Check custom manual keyword filters first
+    clean_k = query.strip().lower()
+    if filters_collection is not None:
+        custom = filters_collection.find_one({"keyword": clean_k})
+        if custom:
+            await update.message.reply_text(custom.get("reply_text", ""), parse_mode="Markdown")
+            return
+
+    # In groups: filter out conversational sentences and casual chat
+    is_group = (update.effective_chat.type != 'private')
+    if is_group and is_conversational_text(query):
+        return
+
+    await execute_movie_search(update, context, query, is_explicit_command=False)
 
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1340,6 +1432,7 @@ def main():
     application.add_handler(CommandHandler('testposter', testposter_command))
     application.add_handler(CommandHandler('exporttmdb', exporttmdb_command))
     application.add_handler(CommandHandler('setwelcome', setwelcome_command))
+    application.add_handler(CommandHandler(['find', 'movie', 'search', 'f', 'm'], movie_command_handler))
     
     # Catch forwarded messages for batch indexer (must be BEFORE index_movie_handler to intercept correctly if needed)
     application.add_handler(MessageHandler(filters.ChatType.PRIVATE & filters.FORWARDED, batch_forward_handler))
