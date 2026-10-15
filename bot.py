@@ -18,28 +18,100 @@ def load_env():
         pass
 
 load_env()
-TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+
+import sys
+
+BOT_CONFIGS = {
+    "1": {
+        "name": "CinePrime Auto Filter",
+        "token": "8861631170:AAEBV-3N2KzDRy1axQiHT_xa_8totMEipTk",
+        "channel_id": -1003217836347,
+        "db_name": "telegram_bot",
+        "mongo_uri": "mongodb+srv://dharani2006lakshmi_db_user:Byi5WDiKV6H53Xe1@cluster0.p93dbly.mongodb.net",
+        "alt_db_name": "autofilter_bot2",
+        "alt_mongo_uri": "mongodb+srv://firee4531_db_user:firee_2006@cluster0.n2iizcz.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0",
+        "port": 8081
+    },
+    "2": {
+        "name": "CinePrime Auto Filter 2",
+        "token": "8918387267:AAG3Ht0eoWPYgkE6NHrxSr1X93b2FQAPfA0",
+        "channel_id": -1004495752619,
+        "db_name": "autofilter_bot2",
+        "mongo_uri": "mongodb+srv://firee4531_db_user:firee_2006@cluster0.n2iizcz.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0",
+        "alt_db_name": "telegram_bot",
+        "alt_mongo_uri": "mongodb+srv://dharani2006lakshmi_db_user:Byi5WDiKV6H53Xe1@cluster0.p93dbly.mongodb.net",
+        "port": 8082
+    }
+}
+
+# Determine instance from CLI argument (e.g. 'python bot.py 1') or environment variable
+instance_key = "1"
+if len(sys.argv) > 1 and sys.argv[1] in ["1", "2"]:
+    instance_key = sys.argv[1]
+elif os.environ.get("BOT_INSTANCE") in ["1", "2"]:
+    instance_key = os.environ.get("BOT_INSTANCE")
+elif os.environ.get("INSTANCE") in ["1", "2"]:
+    instance_key = os.environ.get("INSTANCE")
+
+curr_cfg = BOT_CONFIGS.get(instance_key, BOT_CONFIGS["1"])
+
+TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN") or curr_cfg["token"]
+DATABASE_CHANNEL_ID = int(os.environ.get("DATABASE_CHANNEL_ID") or curr_cfg["channel_id"])
+DATABASE_NAME = os.environ.get("DATABASE_NAME") or curr_cfg["db_name"]
+PORT = int(os.environ.get("PORT") or curr_cfg["port"])
+os.environ["PORT"] = str(PORT)
+
+print(f"🤖 [AUTOFILTER] Starting {curr_cfg['name']} (Instance {instance_key})")
+print(f"📁 [AUTOFILTER] Channel ID: {DATABASE_CHANNEL_ID}")
+print(f"🗄️ [AUTOFILTER] Primary Database: {DATABASE_NAME}")
 
 import pymongo
 
-MONGODB_URI = os.environ.get("MONGODB_URI", "")
+MONGODB_URI = os.environ.get("MONGODB_URI") or curr_cfg.get("mongo_uri") or os.environ.get("MONGO_URI") or ""
+ALT_MONGODB_URI = curr_cfg.get("alt_mongo_uri") or os.environ.get("LEGACY_170K_DB_URI") or ""
+ALT_DATABASE_NAME = curr_cfg.get("alt_db_name")
+
 client = None
 db = None
 movies_collection = None
 users_collection = None
+filters_collection = None
+config_collection = None
+alt_client = None
+alt_movies_collection = None
 
 if MONGODB_URI:
     try:
         client = pymongo.MongoClient(MONGODB_URI)
-        db = client['telegram_bot']
+        db = client[DATABASE_NAME]
         movies_collection = db['movies']
         users_collection = db['users']
+        filters_collection = db['custom_filters']
+        config_collection = db['config']
         
         # Connect to Cinescraper's database
         scrape_db = client['cinesearch_db']
         scrape_queue = scrape_db['scrape_queue']
+        print(f"✅ Connected to Primary MongoDB database '{DATABASE_NAME}' successfully!")
     except Exception as e:
-        print(f"MongoDB Connection Error: {e}")
+        print(f"MongoDB Primary Connection Error: {e}")
+
+if ALT_MONGODB_URI and ALT_DATABASE_NAME:
+    try:
+        alt_client = pymongo.MongoClient(ALT_MONGODB_URI)
+        alt_movies_collection = alt_client[ALT_DATABASE_NAME]['movies']
+        print(f"✅ Connected to Secondary MongoDB database '{ALT_DATABASE_NAME}' for full catalog fallback!")
+    except Exception as e:
+        print(f"MongoDB Secondary Connection Notice: {e}")
+
+# Shared Search Coordination Collection
+shared_coord_col = None
+try:
+    c_client = alt_client if instance_key == "1" else client
+    if c_client is not None:
+        shared_coord_col = c_client['cineprime_community']['search_coordination']
+except Exception:
+    pass
 
 def track_user(user):
     if users_collection is not None and user is not None:
@@ -169,7 +241,7 @@ def normalize_text(text):
     return text
 
 def search_movies(query):
-    if movies_collection is None:
+    if movies_collection is None and alt_movies_collection is None:
         return []
         
     # Extract alphanumeric words from the query
@@ -177,33 +249,62 @@ def search_movies(query):
     if not words:
         return []
         
-    # Create a regex condition for every word (case-insensitive)
-    conditions = []
-    for word in words:
-        conditions.append({"file_name": {"$regex": word, "$options": "i"}})
-        
-    # Let MongoDB do the heavy lifting! (Find matching all words)
-    try:
-        cursor = movies_collection.find({"$and": conditions})
-        results = list(cursor)
-        
-        # Filter out corrupt documents that don't have a file_id
-        valid_results = [r for r in results if r.get('file_id')]
-        
-        return valid_results
-    except Exception as e:
-        print(f"MongoDB Search Error: {e}")
-        return []
+    # Create regex conditions for words (using re.compile for exact BSON matching)
+    conditions = [{"file_name": re.compile(re.escape(word), re.IGNORECASE)} for word in words]
+    combined = []
+    seen_ids = set()
+    seen_signatures = set()
+
+    # 1. Search Primary Database
+    if movies_collection is not None:
+        try:
+            cursor = movies_collection.find({"$and": conditions}).limit(50)
+            for r in cursor:
+                fid = r.get('file_id')
+                fn = (r.get('file_name') or '').strip().lower()
+                fsz = r.get('file_size') or 0
+                sig = (fn, fsz)
+                if fid and fid not in seen_ids and sig not in seen_signatures:
+                    seen_ids.add(fid)
+                    seen_signatures.add(sig)
+                    combined.append(r)
+        except Exception as e:
+            print(f"Primary MongoDB Search Error: {e}")
+
+    # 2. Enrich from Secondary Database if needed
+    if alt_movies_collection is not None and len(combined) < 30:
+        try:
+            alt_cursor = alt_movies_collection.find({"$and": conditions}).limit(30)
+            for r in alt_cursor:
+                fid = r.get('file_id')
+                fn = (r.get('file_name') or '').strip().lower()
+                fsz = r.get('file_size') or 0
+                sig = (fn, fsz)
+                if fid and fid not in seen_ids and sig not in seen_signatures:
+                    seen_ids.add(fid)
+                    seen_signatures.add(sig)
+                    combined.append(r)
+        except Exception as e:
+            print(f"Secondary MongoDB Search Error: {e}")
+
+    return combined
 
 def get_movie_by_id(movie_id):
-    if movies_collection is None:
-        return None
-    try:
-        from bson.objectid import ObjectId
-        obj_id = ObjectId(movie_id)
-        return movies_collection.find_one({'$or': [{'id': movie_id}, {'_id': obj_id}]})
-    except:
-        return movies_collection.find_one({'id': movie_id})
+    from bson.objectid import ObjectId
+    for col in [movies_collection, alt_movies_collection]:
+        if col is None:
+            continue
+        try:
+            try:
+                obj_id = ObjectId(movie_id)
+                m = col.find_one({'$or': [{'id': movie_id}, {'_id': obj_id}]})
+            except Exception:
+                m = col.find_one({'id': movie_id})
+            if m:
+                return m
+        except Exception:
+            pass
+    return None
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     track_user(update.effective_user)
@@ -276,18 +377,21 @@ async def index_movie_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     file_name = file.file_name or "Unknown_Movie"
     caption = msg.caption_html if msg.caption else ""
     
-    # 🌟 NEW: Forward a physical backup of the file to the Database Channel FIRST!
-    try:
-        forwarded_msg = await context.bot.copy_message(
-            chat_id=-1003975570574,
-            from_chat_id=msg.chat.id,
-            message_id=msg.message_id
-        )
-        channel_message_id = forwarded_msg.message_id
-        channel_chat_id = -1003975570574
-    except Exception as e:
-        print(f"Failed to backup to Database Channel: {e}")
-        # Fallback to original message if forward fails
+    # Forward a backup of the file to the Database Channel if not already there
+    if update.effective_chat.id != DATABASE_CHANNEL_ID:
+        try:
+            forwarded_msg = await context.bot.copy_message(
+                chat_id=DATABASE_CHANNEL_ID,
+                from_chat_id=msg.chat.id,
+                message_id=msg.message_id
+            )
+            channel_message_id = forwarded_msg.message_id
+            channel_chat_id = DATABASE_CHANNEL_ID
+        except Exception as e:
+            print(f"Failed to backup to Database Channel: {e}")
+            channel_message_id = msg.message_id
+            channel_chat_id = msg.chat.id
+    else:
         channel_message_id = msg.message_id
         channel_chat_id = msg.chat.id
         
@@ -305,10 +409,13 @@ async def post_init(application: Application):
     BOT_USERNAME = application.bot.username
     print(f"Bot Username: {BOT_USERNAME}")
     
-    # Start the powerful aiohttp Streaming Server inside PTB's asyncio loop!
-    from stream_server.server import start_stream_server
-    import asyncio
-    asyncio.create_task(start_stream_server())
+    # Start the optional aiohttp Streaming Server inside PTB's asyncio loop if configured
+    try:
+        from stream_server.server import start_stream_server
+        import asyncio
+        asyncio.create_task(start_stream_server())
+    except Exception as e:
+        print(f"Notice: Web stream server skipped: {e}")
 
 def build_paginated_keyboard(results, page, query):
     ITEMS_PER_PAGE = 10
@@ -331,16 +438,37 @@ def build_paginated_keyboard(results, page, query):
     keyboard.append([InlineKeyboardButton("⬆️ SELECT OPTION HERE ⬆️", callback_data="ignore")])
     
     for movie in page_results:
-        btn_text = movie.get('file_name', 'Unknown Video')
-        if len(btn_text) > 40:
-            btn_text = btn_text[:37] + "..."
+        raw_name = movie.get('file_name', 'Unknown Video')
+        # Clean off unnecessary @tags from button to save precious characters
+        clean_name = re.sub(r'@[a-zA-Z0-9_]+', '', raw_name).strip()
+        clean_name = re.sub(r'\.(mkv|mp4|avi|webm|ts)$', '', clean_name, flags=re.IGNORECASE).strip()
+        
+        sz_bytes = movie.get('file_size', 0)
+        sz_str = ""
+        if sz_bytes:
+            try:
+                sb = float(sz_bytes)
+                for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+                    if sb < 1024.0:
+                        sz_str = f"{sb:.1f}{unit}" if unit in ['GB', 'MB'] else f"{int(sb)}{unit}"
+                        break
+                    sb /= 1024.0
+            except Exception:
+                pass
+            
+        size_tag = f" [{sz_str}]" if sz_str else ""
+        max_name_len = 40 - len(size_tag)
+        if len(clean_name) > max_name_len:
+            clean_name = clean_name[:max_name_len - 3] + "..."
+            
+        btn_label = f"🎬 {clean_name}{size_tag}"
         
         # Use deep linking to redirect to bot PM
         if BOT_USERNAME:
             url = f"https://t.me/{BOT_USERNAME}?start=get_{movie.get('id') or str(movie['_id'])}"
-            keyboard.append([InlineKeyboardButton(f"🎬 {btn_text}", url=url)])
+            keyboard.append([InlineKeyboardButton(btn_label, url=url)])
         else:
-            keyboard.append([InlineKeyboardButton(f"🎬 {btn_text}", callback_data=f"get_{movie.get('id') or str(movie['_id'])}")])
+            keyboard.append([InlineKeyboardButton(btn_label, callback_data=f"get_{movie.get('id') or str(movie['_id'])}")])
         
     # Pagination Footer
     if total_pages > 1:
@@ -406,25 +534,125 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
         
     query = update.message.text
-    # Ignore messages that are too short, or too long (like Welcome Messages and Admin announcements)
-    if not query or len(query) < 2 or len(query) > 60:
+    if not query or len(query.strip()) < 2:
         return
-        
-    # 🔍 INSTANT FEEDBACK
-    searching_msg = await update.message.reply_text(f"🔍 Searching for `{query}`", parse_mode="Markdown")
-        
+
+    # Check custom manual keyword filters first
+    clean_k = query.strip().lower()
+    if filters_collection is not None:
+        custom = filters_collection.find_one({"keyword": clean_k})
+        if custom:
+            await update.message.reply_text(custom.get("reply_text", ""), parse_mode="Markdown")
+            return
+
+    # Ignore messages that are too short, or too long (like Welcome Messages and Admin announcements)
+    is_group = (update.effective_chat.type != 'private')
+    msg_id = update.message.message_id
+    chat_id = update.effective_chat.id
+    coord_key = f"{chat_id}_{msg_id}"
+
     import time
     start_time = time.time()
-    results = search_movies(query)
+
+    # =========================================================================
+    # MULTI-BOT GROUP SEARCH COORDINATION
+    # 1st Preference: Instance 2 (New AutoFilter Bot - Storage Channels DB)
+    # 2nd Preference: Instance 1 (170k File Bot - Legacy DB Fallback)
+    # =========================================================================
+    if is_group:
+        if instance_key == "2":
+            # 1st Preference: New AutoFilter Bot
+            # IMMEDIATELY acquire atomic lock in shared MongoDB BEFORE executing search
+            if shared_coord_col is not None:
+                try:
+                    shared_coord_col.update_one(
+                        {"_id": coord_key},
+                        {"$set": {"status": "searching", "by": "bot_2", "start_time": time.time()}},
+                        upsert=True
+                    )
+                except Exception:
+                    pass
+
+            # Perform the database search
+            results = search_movies(query)
+
+            if not results:
+                # No files found in New Bot! Release lock immediately so 170k Bot takes over instantly!
+                if shared_coord_col is not None:
+                    try:
+                        shared_coord_col.update_one(
+                            {"_id": coord_key},
+                            {"$set": {"status": "no_results", "by": "bot_2", "done_time": time.time()}},
+                            upsert=True
+                        )
+                    except Exception:
+                        pass
+                return  # Stay completely silent in group
+
+            # Files found! Claim this message permanently
+            if shared_coord_col is not None:
+                try:
+                    shared_coord_col.update_one(
+                        {"_id": coord_key},
+                        {"$set": {"status": "handled", "by": "bot_2", "count": len(results), "done_time": time.time()}},
+                        upsert=True
+                    )
+                except Exception:
+                    pass
+
+        elif instance_key == "1":
+            # 2nd Preference: 170k Legacy Bot
+            # Poll shared_coord_col up to 4.5 seconds (checking every 0.25s) to let 1st preference Bot 2 respond
+            for _ in range(18):  # 18 * 0.25s = 4.5s max
+                await asyncio.sleep(0.25)
+                if shared_coord_col is not None:
+                    try:
+                        entry = shared_coord_col.find_one({"_id": coord_key})
+                        if entry:
+                            st = entry.get("status")
+                            if st == "handled" or entry.get("handled"):
+                                # Bot 2 found files and replied! 170k Bot stays 100% silent!
+                                return
+                            elif st == "no_results":
+                                # Bot 2 has no files! 170k Bot wakes up IMMEDIATELY!
+                                break
+                    except Exception:
+                        pass
+
+            # Search fallback in 170k Legacy database
+            results = search_movies(query)
+            if not results:
+                return  # Silent if no results
+
+            # Double check before replying that Bot 2 didn't just finish
+            if shared_coord_col is not None:
+                try:
+                    entry = shared_coord_col.find_one({"_id": coord_key})
+                    if entry and (entry.get("status") == "handled" or entry.get("handled")):
+                        return
+                    shared_coord_col.update_one(
+                        {"_id": coord_key},
+                        {"$set": {"status": "handled", "by": "bot_1", "count": len(results), "done_time": time.time()}},
+                        upsert=True
+                    )
+                except Exception:
+                    pass
+        else:
+            results = search_movies(query)
+            if not results:
+                return
+    else:
+        # In Private Messages: Always search directly
+        results = search_movies(query)
+
     end_time = time.time()
     search_time = round(end_time - start_time, 3)
-    
+
     if not results:
-        # Auto-Queue the missing movie to Cinescraper
+        # In private chat only: send not found guide
         try:
             if scrape_queue is not None:
                 import datetime
-                import re
                 clean_query = query.strip()
                 scrape_queue.update_one(
                     {"movie_name": {"$regex": f"^{re.escape(clean_query)}$", "$options": "i"}},
@@ -451,25 +679,16 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         google_url = f"https://www.google.com/search?q={urllib.parse.quote(query)}"
         keyboard = [[InlineKeyboardButton("🔍 DO GOOGLE", url=google_url)]]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await searching_msg.edit_text(
-            not_found_text, 
-            reply_markup=reply_markup,
-            parse_mode="Markdown"
-        )
-        # Auto-delete BOTH the user's message and bot's message after 300s in groups
-        if update.effective_chat.type != 'private':
-            asyncio.create_task(delete_after(update.message, 300))
-            asyncio.create_task(delete_after(searching_msg, 300))
+        await update.message.reply_text(not_found_text, reply_markup=reply_markup, parse_mode="Markdown")
         return
-        
+
     short_query = query[:40]
     reply_markup = build_paginated_keyboard(results, 1, short_query)
-    
-    user_name = update.effective_user.first_name
-    if update.effective_user.last_name:
+
+    user_name = update.effective_user.first_name if update.effective_user else "Member"
+    if update.effective_user and update.effective_user.last_name:
         user_name += f" {update.effective_user.last_name}"
-        
+
     text_content = (
         f"🧿 **ᴛɪᴛʟᴇ :** `{query}`\n"
         f"📂 **ᴛᴏᴛᴀʟ ꜰɪʟᴇꜱ :** {len(results)}\n"
@@ -477,13 +696,13 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"⏱ **ʀᴇꜱᴜʟᴛ ɪɴ :** {search_time} ꜱᴇᴄᴏɴᴅꜱ\n\n"
         f"👇 **𝑹𝒆𝒒𝒖𝒆𝒔𝒕𝒆𝒅 𝑭𝒊𝒍𝒆𝒔 𝑩𝒆𝒍𝒐𝒘** 👇"
     )
-    
-    await searching_msg.edit_text(
+
+    sent_msg = await update.message.reply_text(
         text_content,
         reply_markup=reply_markup,
         parse_mode="Markdown"
     )
-    
+
     if update.effective_chat.type != 'private':
         # Try to send a permanent copy to the user's PM
         try:
@@ -494,11 +713,11 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode="Markdown"
             )
         except Exception:
-            pass # They haven't started the bot in PM yet
-            
+            pass
+
         # Auto-delete BOTH the user's message and bot's message after 300s (5 mins) in group
         asyncio.create_task(delete_after(update.message, 300))
-        asyncio.create_task(delete_after(searching_msg, 300))
+        asyncio.create_task(delete_after(sent_msg, 300))
 
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -649,8 +868,7 @@ async def channel_index_handler(update: Update, context: ContextTypes.DEFAULT_TY
     chat_id = msg.chat.id
     message_id = msg.message_id
     
-    # NEW: Forward a physical backup of the file to the Database Channel FIRST!
-    DATABASE_CHANNEL_ID = -1003975570574
+    # If the file came from another channel, forward a copy to our designated storage channel
     if chat_id != DATABASE_CHANNEL_ID:
         try:
             forwarded_msg = await context.bot.copy_message(
@@ -661,7 +879,7 @@ async def channel_index_handler(update: Update, context: ContextTypes.DEFAULT_TY
             chat_id = DATABASE_CHANNEL_ID
             message_id = forwarded_msg.message_id
         except Exception as e:
-            print(f"Failed to backup to Database Channel: {e}")
+            print(f"Notice forwarding to storage channel {DATABASE_CHANNEL_ID}: {e}")
             
     add_movie(file_id, file_name, caption, chat_id, message_id, file.file_size)
 
@@ -745,16 +963,78 @@ async def batch_forward_handler(update: Update, context: ContextTypes.DEFAULT_TY
 
 @admin_only
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if movies_collection is None:
+    if movies_collection is None and alt_movies_collection is None:
         await update.message.reply_text("❌ **MongoDB is NOT connected.**", parse_mode="Markdown")
         return
         
     try:
-        count = movies_collection.count_documents({})
+        primary_count = movies_collection.count_documents({}) if movies_collection is not None else 0
+        alt_count = alt_movies_collection.count_documents({}) if alt_movies_collection is not None else 0
+        total_movies = primary_count + alt_count
         user_count = users_collection.count_documents({}) if users_collection is not None else 0
-        await update.message.reply_text(f"✅ **MongoDB is Connected!**\n\nTotal movies in database: **{count}**\nTotal unique users: **{user_count}**", parse_mode="Markdown")
+
+        status_text = (
+            f"⚡ **CinePrime AutoFilter Status & Stats:**\n\n"
+            f"• 🎬 **Primary DB ({DATABASE_NAME}):** `{primary_count:,}` files\n"
+        )
+        if alt_movies_collection is not None:
+            status_text += f"• 📦 **Secondary DB ({ALT_DATABASE_NAME}):** `{alt_count:,}` files\n"
+        status_text += (
+            f"• 🌟 **Combined Searchable Files:** `{total_movies:,}`\n"
+            f"• 👥 **Total Users Tracked:** `{user_count:,}`\n"
+            f"• 📁 **Storage Channel ID:** `{DATABASE_CHANNEL_ID}`\n"
+            f"• 🤖 **Instance Key:** `{instance_key}`\n"
+            f"• 🟢 **Engine:** High-Performance AutoFilter Core v3.0"
+        )
+        await update.message.reply_text(status_text, parse_mode="Markdown")
     except Exception as e:
         await update.message.reply_text(f"❌ **MongoDB Error:** {e}")
+
+@admin_only
+async def filter_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args or len(context.args) < 2:
+        await update.message.reply_text(
+            "❌ **Usage:** `/filter <keyword> <reply_text>`\n"
+            "_Example:_ `/filter rules Check group rules before requesting!`",
+            parse_mode="Markdown"
+        )
+        return
+    keyword = context.args[0].lower().strip()
+    reply_text = " ".join(context.args[1:]).strip()
+    if filters_collection is not None:
+        filters_collection.update_one(
+            {"keyword": keyword},
+            {"$set": {"keyword": keyword, "reply_text": reply_text}},
+            upsert=True
+        )
+        await update.message.reply_text(f"✅ Custom filter added for `{keyword}`!", parse_mode="Markdown")
+    else:
+        await update.message.reply_text("❌ Database not connected.")
+
+@admin_only
+async def stop_filter_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text("❌ **Usage:** `/stop <keyword>` or `/delfilter <keyword>`", parse_mode="Markdown")
+        return
+    keyword = context.args[0].lower().strip()
+    if filters_collection is not None:
+        res = filters_collection.delete_one({"keyword": keyword})
+        if res.deleted_count > 0:
+            await update.message.reply_text(f"✅ Filter for `{keyword}` has been deleted.", parse_mode="Markdown")
+        else:
+            await update.message.reply_text(f"⚠️ No filter found for `{keyword}`.", parse_mode="Markdown")
+
+@admin_only
+async def list_filters_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if filters_collection is not None:
+        docs = list(filters_collection.find().limit(50))
+        if not docs:
+            await update.message.reply_text("✨ No custom filters configured.")
+            return
+        lines = ["📋 **Active Custom Filters:**\n"]
+        for d in docs:
+            lines.append(f"• `{d['keyword']}` ➔ _{d.get('reply_text', '')[:30]}..._")
+        await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
 
 @admin_only
 async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1001,6 +1281,26 @@ async def notify_users_job(context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         print(f"Error in notify_users_job: {e}")
 
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = (
+        "🤖 **CinePrime AutoFilter Bot — Management & Usage Guide**\n\n"
+        "🎬 **How to Search for Movies & Series:**\n"
+        "• Send the movie name in the group or in this chat!\n"
+        "• _Example:_ `Leo 2023` or `Jailer` or `Loki S01`\n"
+        "• Use interactive buttons to filter by **Quality** (1080p, 720p, 480p), **Language**, or **Season**.\n"
+        "• Click on any movie button to receive the file in your Private Messages.\n\n"
+        "🛠 **Admin In-Chat Management Commands:**\n"
+        "• `/status` — View total indexed movies (170k+), users, and database health\n"
+        "• `/claim` — Claim ownership of the bot in this chat\n"
+        "• `/batch` — Batch index an entire channel backwards from a forwarded message\n"
+        "• `/filter <keyword> <reply>` — Set a custom keyword trigger\n"
+        "• `/filters` — View all active custom filters\n"
+        "• `/stop <keyword>` — Delete a custom keyword filter\n"
+        "• `/users` — View total unique users\n"
+        "• `/tmdbstatus` — Check TMDB poster enrichment coverage"
+    )
+    await update.message.reply_text(text, parse_mode="Markdown")
+
 def main():
     threading.Thread(target=start_enricher, daemon=True).start()
     
@@ -1018,11 +1318,16 @@ def main():
         print(f"Warning: Failed to schedule daily welcome: {e}")
     
     application.add_handler(CommandHandler('start', start_handler))
+    application.add_handler(CommandHandler('help', help_command))
     application.add_handler(CommandHandler('whereami', whereami_command))
     application.add_handler(CommandHandler('claim', claim_command))
     application.add_handler(CommandHandler('batch', batch_command))
     application.add_handler(CommandHandler('status', status_command))
     application.add_handler(CommandHandler('users', users_command))
+    application.add_handler(CommandHandler('filter', filter_command))
+    application.add_handler(CommandHandler('filters', list_filters_command))
+    application.add_handler(CommandHandler('stop', stop_filter_command))
+    application.add_handler(CommandHandler('delfilter', stop_filter_command))
     application.add_handler(CommandHandler('tmdbstatus', tmdbstatus_command))
     application.add_handler(CommandHandler('testposter', testposter_command))
     application.add_handler(CommandHandler('exporttmdb', exporttmdb_command))

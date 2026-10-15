@@ -7,13 +7,22 @@ from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
-MONGODB_URI = os.environ.get("MONGODB_URI", "")
-TMDB_API_KEY = "74683f7b34f7b689d84fcd8e0016d82a"
+MONGODB_URI = os.environ.get("MONGODB_URI") or os.environ.get("MONGO_URI") or ""
+if not MONGODB_URI:
+    MONGODB_URI = "mongodb+srv://firee4531_db_user:firee_2006@cluster0.n2iizcz.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 
-print("Connecting to MongoDB...")
-client = pymongo.MongoClient(MONGODB_URI)
-db = client['telegram_bot']
-movies_collection = db['movies']
+DATABASE_NAME = os.environ.get("DATABASE_NAME", "autofilter_bot1")
+TMDB_API_KEY = os.environ.get("TMDB_API_KEY", "74683f7b34f7b689d84fcd8e0016d82a")
+
+client = None
+db = None
+movies_collection = None
+try:
+    client = pymongo.MongoClient(MONGODB_URI)
+    db = client[DATABASE_NAME]
+    movies_collection = db['movies']
+except Exception as e:
+    print(f"Notice: tmdb_enricher mongo connection deferred: {e}")
 
 def clean_movie_title(filename):
     """
