@@ -837,13 +837,6 @@ async def search_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     track_user(update.effective_user)
     query = update.callback_query
-    
-    # Ensure only the original sender can click the buttons in groups
-    original_msg = query.message.reply_to_message
-    if original_msg and original_msg.from_user.id != update.effective_user.id:
-        await query.answer("This is not for you! Please search for your own movie.", show_alert=True)
-        return
-        
     data = query.data
     
     if data == "ignore":
