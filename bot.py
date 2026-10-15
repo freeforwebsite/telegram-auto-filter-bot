@@ -441,10 +441,11 @@ def build_paginated_keyboard(results, page, query):
         raw_name = movie.get('file_name', 'Unknown Video')
         # Clean off unnecessary @tags from button to save precious characters
         clean_name = re.sub(r'@[a-zA-Z0-9_]+', '', raw_name).strip()
-        clean_name = re.sub(r'\.(mkv|mp4|avi|webm|ts)$', '', clean_name, flags=re.IGNORECASE).strip()
+        clean_name = re.sub(r'\.(mkv|mp4|avi|webm|ts|mov)$', '', clean_name, flags=re.IGNORECASE).strip()
+        clean_name = clean_name.lstrip('. -_').strip()
         
-        sz_bytes = movie.get('file_size', 0)
         sz_str = ""
+        sz_bytes = movie.get('file_size') or movie.get('size')
         if sz_bytes:
             try:
                 sb = float(sz_bytes)
@@ -455,13 +456,26 @@ def build_paginated_keyboard(results, page, query):
                     sb /= 1024.0
             except Exception:
                 pass
-            
-        size_tag = f" [{sz_str}]" if sz_str else ""
-        max_name_len = 40 - len(size_tag)
+
+        if not sz_str:
+            # Fallback 1: Extract size from caption (e.g. 170k database format)
+            caption = movie.get('caption') or ''
+            m_cap_sz = re.search(r'(\d+(?:\.\d+)?\s*(?:GB|MB|KB))', caption, re.IGNORECASE)
+            if m_cap_sz:
+                sz_str = m_cap_sz.group(1).replace(" ", "")
+
+        if not sz_str:
+            # Fallback 2: Extract size from filename
+            m_fn_sz = re.search(r'(\d+(?:\.\d+)?\s*(?:GB|MB|KB))', raw_name, re.IGNORECASE)
+            if m_fn_sz:
+                sz_str = m_fn_sz.group(1).replace(" ", "")
+
+        size_tag = f"[{sz_str}] " if sz_str else ""
+        max_name_len = 50 - len(size_tag)
         if len(clean_name) > max_name_len:
             clean_name = clean_name[:max_name_len - 3] + "..."
             
-        btn_label = f"🎬 {clean_name}{size_tag}"
+        btn_label = f"📁 {size_tag}{clean_name}"
         
         # Use deep linking to redirect to bot PM
         if BOT_USERNAME:
