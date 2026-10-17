@@ -1154,7 +1154,7 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             status_text += f"• 📦 **Secondary Database ({ALT_DATABASE_NAME}):** `{alt_count:,}` files\n"
         status_text += (
             f"• 👥 **Total Users Tracked:** `{user_count:,}`\n"
-            f"• 🤖 **Active Instance:** {curr_cfg.get('name', 'AutoFilter')} (Instance `{instance_key}`)\n"
+            f"• 🤖 **Bot Username:** @{BOT_USERNAME or curr_cfg.get('name')}\n"
             f"• 🟢 **System Status:** Online & Active"
         )
         await update.message.reply_text(status_text, parse_mode="Markdown")
