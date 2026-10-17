@@ -1136,7 +1136,7 @@ async def batch_forward_handler(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if movies_collection is None and alt_movies_collection is None:
-        await update.message.reply_text("❌ **MongoDB is NOT connected.**", parse_mode="Markdown")
+        await update.message.reply_text("❌ MongoDB is NOT connected.")
         return
         
     try:
@@ -1146,20 +1146,20 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_count = users_collection.count_documents({}) if users_collection is not None else 0
 
         status_text = (
-            f"⚡ **CinePrime AutoFilter File Access & Stats:**\n\n"
-            f"📁 **Total Accessible Files:** `{total_movies:,}`\n"
-            f"• 🎬 **Primary Database ({DATABASE_NAME}):** `{primary_count:,}` files\n"
+            f"⚡ *CinePrime AutoFilter File Access & Stats:*\n\n"
+            f"📁 *Total Accessible Files:* `{total_movies:,}`\n"
+            f"• 🎬 *Primary Database:* `{primary_count:,}` files\n"
         )
         if alt_movies_collection is not None:
-            status_text += f"• 📦 **Secondary Database ({ALT_DATABASE_NAME}):** `{alt_count:,}` files\n"
+            status_text += f"• 📦 *Secondary Database:* `{alt_count:,}` files\n"
         status_text += (
-            f"• 👥 **Total Users Tracked:** `{user_count:,}`\n"
-            f"• 🤖 **Bot Username:** @{BOT_USERNAME or curr_cfg.get('name')}\n"
-            f"• 🟢 **System Status:** Online & Active"
+            f"• 👥 *Total Users Tracked:* `{user_count:,}`\n"
+            f"• 🤖 *Active Bot:* @{BOT_USERNAME or curr_cfg.get('name', 'AutoFilter')}\n"
+            f"• 🟢 *System Status:* Online & Active"
         )
         await update.message.reply_text(status_text, parse_mode="Markdown")
     except Exception as e:
-        await update.message.reply_text(f"❌ **MongoDB Error:** {e}")
+        await update.message.reply_text(f"❌ Status Error: {e}")
 
 @admin_only
 async def filter_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
