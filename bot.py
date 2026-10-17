@@ -1146,18 +1146,18 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_count = users_collection.count_documents({}) if users_collection is not None else 0
 
         status_text = (
-            f"⚡ *CinePrime AutoFilter File Access & Stats:*\n\n"
-            f"📁 *Total Accessible Files:* `{total_movies:,}`\n"
-            f"• 🎬 *Primary Database:* `{primary_count:,}` files\n"
+            f"⚡ <b>CinePrime AutoFilter File Access & Stats</b>\n\n"
+            f"📁 <b>Total Accessible Files:</b> <code>{total_movies:,}</code>\n"
+            f"• 🎬 <b>Primary Database:</b> <code>{primary_count:,}</code> files\n"
         )
         if alt_movies_collection is not None:
-            status_text += f"• 📦 *Secondary Database:* `{alt_count:,}` files\n"
+            status_text += f"• 📦 <b>Secondary Database:</b> <code>{alt_count:,}</code> files\n"
         status_text += (
-            f"• 👥 *Total Users Tracked:* `{user_count:,}`\n"
-            f"• 🤖 *Active Bot:* @{BOT_USERNAME or curr_cfg.get('name', 'AutoFilter')}\n"
-            f"• 🟢 *System Status:* Online & Active"
+            f"• 👥 <b>Total Users Tracked:</b> <code>{user_count:,}</code>\n"
+            f"• 🤖 <b>Active Bot:</b> @{BOT_USERNAME or curr_cfg.get('name', 'AutoFilter')}\n"
+            f"• 🟢 <b>System Status:</b> Online & Active"
         )
-        await update.message.reply_text(status_text, parse_mode="Markdown")
+        await update.message.reply_text(status_text, parse_mode="HTML")
     except Exception as e:
         await update.message.reply_text(f"❌ Status Error: {e}")
 
