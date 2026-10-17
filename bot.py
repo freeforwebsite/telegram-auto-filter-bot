@@ -1134,7 +1134,6 @@ async def batch_forward_handler(update: Update, context: ContextTypes.DEFAULT_TY
             
     await status_msg.edit_text(f"✅ **Batch Indexing Complete!**\n\nSuccessfully added **{success_count}** new movies to the database.", parse_mode="Markdown")
 
-@admin_only
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if movies_collection is None and alt_movies_collection is None:
         await update.message.reply_text("❌ **MongoDB is NOT connected.**", parse_mode="Markdown")
@@ -1147,17 +1146,16 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_count = users_collection.count_documents({}) if users_collection is not None else 0
 
         status_text = (
-            f"⚡ **CinePrime AutoFilter Status & Stats:**\n\n"
-            f"• 🎬 **Primary DB ({DATABASE_NAME}):** `{primary_count:,}` files\n"
+            f"⚡ **CinePrime AutoFilter File Access & Stats:**\n\n"
+            f"📁 **Total Accessible Files:** `{total_movies:,}`\n"
+            f"• 🎬 **Primary Database ({DATABASE_NAME}):** `{primary_count:,}` files\n"
         )
         if alt_movies_collection is not None:
-            status_text += f"• 📦 **Secondary DB ({ALT_DATABASE_NAME}):** `{alt_count:,}` files\n"
+            status_text += f"• 📦 **Secondary Database ({ALT_DATABASE_NAME}):** `{alt_count:,}` files\n"
         status_text += (
-            f"• 🌟 **Combined Searchable Files:** `{total_movies:,}`\n"
             f"• 👥 **Total Users Tracked:** `{user_count:,}`\n"
-            f"• 📁 **Storage Channel ID:** `{DATABASE_CHANNEL_ID}`\n"
-            f"• 🤖 **Instance Key:** `{instance_key}`\n"
-            f"• 🟢 **Engine:** High-Performance AutoFilter Core v3.0"
+            f"• 🤖 **Active Instance:** {curr_cfg.get('name', 'AutoFilter')} (Instance `{instance_key}`)\n"
+            f"• 🟢 **System Status:** Online & Active"
         )
         await update.message.reply_text(status_text, parse_mode="Markdown")
     except Exception as e:
@@ -1495,7 +1493,7 @@ def main():
     application.add_handler(CommandHandler('whereami', whereami_command))
     application.add_handler(CommandHandler('claim', claim_command))
     application.add_handler(CommandHandler('batch', batch_command))
-    application.add_handler(CommandHandler('status', status_command))
+    application.add_handler(CommandHandler(['status', 'stats', 'total', 'files', 'count'], status_command))
     application.add_handler(CommandHandler('users', users_command))
     application.add_handler(CommandHandler('filter', filter_command))
     application.add_handler(CommandHandler('filters', list_filters_command))
