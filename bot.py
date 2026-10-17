@@ -417,6 +417,109 @@ async def post_init(application: Application):
     except Exception as e:
         print(f"Notice: Web stream server skipped: {e}")
 
+_LANG_NAMES = ['Tamil', 'Telugu', 'Hindi', 'Malayalam', 'Kannada', 'English', 'Bengali', 'Marathi', 'Punjabi', 'Multi', 'Dual']
+_LANG_MAP = {l.lower(): l for l in _LANG_NAMES}
+_LANG_MAP.update({'tam': 'Tamil', 'tel': 'Telugu', 'hin': 'Hindi', 'mal': 'Malayalam', 'kan': 'Kannada', 'eng': 'English'})
+_TLD_REGEX = r'(?i)^(?:https?://)?(?:www\.)?[a-z0-9-]+\.(?:com|net|org|in|vip|solar|is|wf|pm|to|cc|me|live|xyz|site|club|app|tv|link|world|pro|co)\s*[-–_:]*\s*'
+
+def format_button_label(movie, fallback_query=""):
+    raw_name = movie.get('file_name', '') or ''
+    caption = movie.get('caption', '') or ''
+    size_bytes = movie.get('file_size') or movie.get('size') or 0
+    full_text = f"{raw_name} {caption}"
+
+    # 1. Size
+    sz_str = ""
+    if size_bytes:
+        try:
+            sb = float(size_bytes)
+            if sb >= 1024**3:
+                val = sb / (1024**3)
+                sz_str = f"{val:.2f} GB"
+            elif sb >= 1024**2:
+                sz_str = f"{int(round(sb / (1024**2)))} MB"
+            elif sb >= 1024:
+                sz_str = f"{int(round(sb / 1024))} KB"
+        except Exception:
+            pass
+
+    if not sz_str:
+        sz_m = re.search(r'\b(\d+(?:\.\d+)?\s*(?:GB|MB))\b', full_text, re.IGNORECASE)
+        if sz_m:
+            sz_str = sz_m.group(1).upper()
+        else:
+            sz_str = "N/A"
+
+    # Clean name
+    t = re.sub(r'@[a-zA-Z0-9_]+', '', raw_name)
+    t = re.sub(r'\.(mkv|mp4|avi|webm|ts|mov)$', '', t, flags=re.IGNORECASE)
+    t = re.sub(_TLD_REGEX, '', t.strip())
+
+    # Extract language
+    found_langs = []
+    for l_key, l_val in _LANG_MAP.items():
+        if re.search(r'\b' + l_key + r'\b', full_text, re.IGNORECASE):
+            if l_val not in found_langs:
+                found_langs.append(l_val)
+    lang_str = " ".join(found_langs[:2]) if found_langs else ""
+
+    # Extract Quality
+    quality = ""
+    res_m = re.search(r'\b(2160p|4k|1080p|720p|540p|480p|360p)\b', full_text, re.IGNORECASE)
+    if res_m:
+        quality = res_m.group(1).upper() if res_m.group(1).lower() == '4k' else res_m.group(1).lower()
+    else:
+        rip_m = re.search(r'\b(web-dl|webrip|hdrip|bluray|hdtv|dvdrip|cam)\b', full_text, re.IGNORECASE)
+        if rip_m:
+            q_raw = rip_m.group(1).lower()
+            quality = {'web-dl': 'WEB-DL', 'webrip': 'WEBRip', 'hdrip': 'HDRip', 'bluray': 'BluRay', 'hdtv': 'HDTV'}.get(q_raw, q_raw.upper())
+
+    # Series vs Movie
+    series_m = re.search(r'\b(s\d{1,2}(?:[\s._-]*e\d{1,2})?|season\s*\d+)\b', t, re.IGNORECASE)
+    year_m = re.search(r'\b(19\d\d|20\d\d)\b', t)
+
+    movie_title = ""
+    if series_m:
+        title_part = t[:series_m.start()]
+        season_part = series_m.group(0).upper().replace(' ', '')
+        clean_title = re.sub(r'[._-]+', ' ', title_part).strip(' ._-([{}])')
+        clean_title = re.sub(r'\s+', ' ', clean_title)
+        movie_title = f"{clean_title} {season_part}".strip()
+    elif year_m:
+        title_part = t[:year_m.start()]
+        year_str = year_m.group(1)
+        clean_title = re.sub(r'[._-]+', ' ', title_part).strip(' ._-([{}])')
+        clean_title = re.sub(r'\s+', ' ', clean_title)
+        if not clean_title:
+            clean_title = fallback_query.title() if fallback_query else "Movie"
+        movie_title = f"{clean_title} ({year_str})"
+    else:
+        stop_tokens = list(_LANG_MAP.keys()) + ['1080p', '720p', '480p', 'hdrip', 'web-dl', 'webrip', 'bluray', 'x264', 'x265', 'hevc']
+        pattern = r'\b(' + '|'.join(re.escape(tok) for tok in stop_tokens) + r')\b'
+        match = re.search(pattern, t, re.IGNORECASE)
+        if match:
+            clean_title = t[:match.start()]
+        else:
+            clean_title = t
+        clean_title = re.sub(r'[._-]+', ' ', clean_title).strip(' ._-([{}])')
+        clean_title = re.sub(r'\s+', ' ', clean_title)
+        movie_title = clean_title or (fallback_query.title() if fallback_query else "Movie")
+
+    # Title-case clean title if it's all lower
+    if movie_title.islower():
+        movie_title = movie_title.title()
+
+    # Cap movie title so button fits comfortably on Telegram clients
+    if len(movie_title) > 28:
+        movie_title = movie_title[:26].rstrip() + ".."
+
+    parts = [sz_str, movie_title]
+    meta = f"{lang_str} {quality}".strip()
+    if meta:
+        parts.append(meta)
+
+    return " | ".join(parts)
+
 def build_paginated_keyboard(results, page, query):
     ITEMS_PER_PAGE = 10
     total_results = len(results)
@@ -438,44 +541,7 @@ def build_paginated_keyboard(results, page, query):
     keyboard.append([InlineKeyboardButton("⬆️ SELECT OPTION HERE ⬆️", callback_data="ignore")])
     
     for movie in page_results:
-        raw_name = movie.get('file_name', 'Unknown Video')
-        # Clean off unnecessary @tags from button to save precious characters
-        clean_name = re.sub(r'@[a-zA-Z0-9_]+', '', raw_name).strip()
-        clean_name = re.sub(r'\.(mkv|mp4|avi|webm|ts|mov)$', '', clean_name, flags=re.IGNORECASE).strip()
-        clean_name = clean_name.lstrip('. -_').strip()
-        
-        sz_str = ""
-        sz_bytes = movie.get('file_size') or movie.get('size')
-        if sz_bytes:
-            try:
-                sb = float(sz_bytes)
-                for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-                    if sb < 1024.0:
-                        sz_str = f"{sb:.1f}{unit}" if unit in ['GB', 'MB'] else f"{int(sb)}{unit}"
-                        break
-                    sb /= 1024.0
-            except Exception:
-                pass
-
-        if not sz_str:
-            # Fallback 1: Extract size from caption (e.g. 170k database format)
-            caption = movie.get('caption') or ''
-            m_cap_sz = re.search(r'(\d+(?:\.\d+)?\s*(?:GB|MB|KB))', caption, re.IGNORECASE)
-            if m_cap_sz:
-                sz_str = m_cap_sz.group(1).replace(" ", "")
-
-        if not sz_str:
-            # Fallback 2: Extract size from filename
-            m_fn_sz = re.search(r'(\d+(?:\.\d+)?\s*(?:GB|MB|KB))', raw_name, re.IGNORECASE)
-            if m_fn_sz:
-                sz_str = m_fn_sz.group(1).replace(" ", "")
-
-        size_tag = f"[{sz_str}] " if sz_str else ""
-        max_name_len = 50 - len(size_tag)
-        if len(clean_name) > max_name_len:
-            clean_name = clean_name[:max_name_len - 3] + "..."
-            
-        btn_label = f"📁 {size_tag}{clean_name}"
+        btn_label = format_button_label(movie, fallback_query=query)
         
         # Use deep linking to redirect to bot PM
         if BOT_USERNAME:
